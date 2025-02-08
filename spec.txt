@@ -1,0 +1,29 @@
+I want to set up a file operations class for interaction with the dropbox api via the python dropbox library. The class should have the following methods:
+
+1. **upload**: Uploads a files/folders to a specified path in Dropbox.
+2. **download**: Downloads a files/folders from a specified path in Dropbox.
+3. **delete**: Deletes a files/folders from a specified path in Dropbox.
+4. **list**: Lists all files in a specified folder in Dropbox.
+5. **create_folder**: Creates a folder in a specified path in Dropbox.
+7. **move*: Moves a file from one path to another in Dropbox.
+8. **copy**: Copies a file from one path to another in Dropbox.
+9. **rename: Renames a file/folder in Dropbox.
+10. **search**: Searches for a file/folder in Dropbox (optionaly from a starting folder).
+
+**Note**: 
+- The upload and download methods should support both files and folders. They should be able to handle small files abd large files as efficiently as possible. 
+If it is recomended they should also do a hash check  so that files are not unnesserily uploaded and downloaded if they havent changed and to ensure that the file is 
+not corrupted. The upload and download methods should also support progress bars. 
+- The list and search method should return a list of files and folders in the specified folder or recersively list all files and folders in the specified 
+folder and its subfolders. If necessary (for instance in large recursive listings) it should also have a progress bar. The list and search methods should also
+support filtering by file type and file size and return a dataframe of the results.
+- The move and copy methods should support moving and copying files and folders.
+- The rename method should support renaming files and folders.
+- The delete method should support deleting files and folders.
+
+**NB**: 
+- You should create the necessary classes and methods to support the above functionality and it should follow the best practices and be as efficient and performant as possible.
+- You should also create a test suite to test the above functionality.
+- You should also create all the necessary documentation for the above functionality. This should include a README.md file and a docstring for each class and method.
+
+
