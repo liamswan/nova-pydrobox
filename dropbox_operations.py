@@ -4,7 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional, Union
 
 import dropbox
 import pandas as pd
@@ -43,38 +43,34 @@ class DropboxOperations:
         self.max_workers = max_workers
 
     def _calculate_file_hash(self, file_path: str) -> str:
-        """
-        Calculate SHA-256 hash of a file.
-
-        Args:
-            file_path: Path to the file
-
-        Returns:
-            str: Hexadecimal hash of the file
-        """
         hasher = hashlib.sha256()
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(self.CHUNK_SIZE), b""):
                 hasher.update(chunk)
         return hasher.hexdigest()
 
+    def _process_metadata(self, metadata: Union[FileMetadata, FolderMetadata]) -> dict:
+        return {
+            "name": metadata.name,
+            "path": metadata.path_lower,
+            "type": "folder" if isinstance(metadata, FolderMetadata) else "file",
+            "size": getattr(metadata, "size", 0)
+            if isinstance(metadata, FileMetadata)
+            else 0,
+            "modified": getattr(metadata, "client_modified", None),
+            "hash": getattr(metadata, "content_hash", None),
+        }
+
     def _process_listing_result(self, result: ListFolderResult) -> pd.DataFrame:
-        entries = []
+        entries: List[dict] = []
         for entry in result.entries:
-            entry_dict = {
-                "name": entry.name,
-                "path": entry.path_lower,
-                "type": "folder" if isinstance(entry, FolderMetadata) else "file",
-                "size": getattr(entry, "size", 0)
-                if isinstance(entry, FileMetadata)
-                else 0,
-                "modified": getattr(entry, "client_modified", None),
-                "hash": getattr(entry, "content_hash", None),
-            }
+            entry_dict = self._process_metadata(entry)
             entries.append(entry_dict)
         return pd.DataFrame(entries)
 
-    def list_files(self, path: str = "", filter_criteria: FileFilter = None):
+    def list_files(
+        self, path: str = "", filter_criteria: Optional[FileFilter] = None
+    ) -> pd.DataFrame:
         try:
             has_more = True
             cursor = None
@@ -113,6 +109,107 @@ class DropboxOperations:
         except dropbox.exceptions.ApiError as e:
             logger.error(f"Error listing files: {e}")
             logger.error(f"Dropbox API error: {e}")
+            raise
+
+    def create_folder(self, path: str) -> pd.DataFrame:
+        try:
+            metadata = self.dbx.files_create_folder_v2(path).metadata
+            result = self._process_metadata(metadata)
+            return pd.DataFrame([result])
+        except dropbox.exceptions.ApiError as e:
+            logger.error(f"Error creating folder at {path}: {e}")
+            raise
+
+    def delete(self, path: str) -> bool:
+        try:
+            self.dbx.files_delete_v2(path)
+            logger.info(f"Successfully deleted {path}")
+            return True
+        except dropbox.exceptions.ApiError as e:
+            logger.error(f"Error deleting {path}: {e}")
+            raise
+
+    def move(self, from_path: str, to_path: str) -> pd.DataFrame:
+        try:
+            metadata = self.dbx.files_move_v2(
+                from_path, to_path, allow_shared_folder=True, autorename=True
+            ).metadata
+            result = self._process_metadata(metadata)
+            return pd.DataFrame([result])
+        except dropbox.exceptions.ApiError as e:
+            logger.error(f"Error moving from {from_path} to {to_path}: {e}")
+            raise
+
+    def copy(self, from_path: str, to_path: str) -> pd.DataFrame:
+        try:
+            metadata = self.dbx.files_copy_v2(
+                from_path, to_path, allow_shared_folder=True, autorename=True
+            ).metadata
+            result = self._process_metadata(metadata)
+            return pd.DataFrame([result])
+        except dropbox.exceptions.ApiError as e:
+            logger.error(f"Error copying from {from_path} to {to_path}: {e}")
+            raise
+
+    def rename(self, from_path: str, new_name: str) -> pd.DataFrame:
+        try:
+            parent_path = str(Path(from_path).parent)
+            to_path = str(Path(parent_path) / new_name)
+
+            metadata = self.dbx.files_move_v2(
+                from_path, to_path, allow_shared_folder=True, autorename=True
+            ).metadata
+            result = self._process_metadata(metadata)
+            return pd.DataFrame([result])
+        except dropbox.exceptions.ApiError as e:
+            logger.error(f"Error renaming {from_path} to {new_name}: {e}")
+            raise
+
+    def search(
+        self, query: str, path: str = "", filter_criteria: FileFilter = None
+    ) -> pd.DataFrame:
+        try:
+            matches = []
+            has_more = True
+            cursor = None
+
+            with tqdm(desc="Searching files", unit=" matches") as pbar:
+                while has_more:
+                    if cursor:
+                        result = self.dbx.files_search_continue_v2(cursor)
+                    else:
+                        result = self.dbx.files_search_v2(
+                            query,
+                            options=dropbox.files.SearchOptions(
+                                path=path if path else None,
+                                max_results=1000,
+                                file_status="active",
+                            ),
+                        )
+
+                    entries = [match.metadata for match in result.matches]
+                    df = pd.DataFrame(
+                        [self._process_metadata(entry) for entry in entries]
+                    )
+
+                    if filter_criteria:
+                        if filter_criteria.file_type != FileType.ALL:
+                            df = df[df["type"] == filter_criteria.file_type.value]
+                        if filter_criteria.min_size:
+                            df = df[df["size"] >= filter_criteria.min_size]
+                        if filter_criteria.max_size:
+                            df = df[df["size"] <= filter_criteria.max_size]
+
+                    matches.append(df)
+                    pbar.update(len(result.matches))
+
+                    has_more = result.has_more
+                    cursor = result.cursor
+
+            return pd.concat(matches, ignore_index=True) if matches else pd.DataFrame()
+
+        except dropbox.exceptions.ApiError as e:
+            logger.error(f"Error searching for {query}: {e}")
             raise
 
     def _upload_file(
@@ -192,7 +289,7 @@ class DropboxOperations:
         try:
             mode = WriteMode.overwrite if overwrite else WriteMode.add
             path = Path(local_path)
-            results = []
+            results: List[dict] = []
 
             if path.is_file():
                 result = self._upload_file(str(path), dropbox_path, mode)
@@ -217,15 +314,9 @@ class DropboxOperations:
 
         except Exception as e:
             logger.error(f"Error uploading: {e}")
-        except IOError as e:
-            logger.error(f"IO error: {e}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
             raise
 
     def _download_file(self, dropbox_path: str, local_path: str) -> FileMetadata:
-        """Download a single file from Dropbox."""
         try:
             Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             metadata = self.dbx.files_get_metadata(dropbox_path)
@@ -252,7 +343,6 @@ class DropboxOperations:
             raise
 
     def _download_large_file(self, dropbox_path: str, local_path: str) -> FileMetadata:
-        """Download a large file in chunks."""
         try:
             metadata = self.dbx.files_get_metadata(dropbox_path)
 
@@ -287,16 +377,6 @@ class DropboxOperations:
             raise
 
     def download(self, dropbox_path: str, local_path: str) -> pd.DataFrame:
-        """
-        Download a file or folder from Dropbox.
-
-        Args:
-            dropbox_path: Path in Dropbox to download from
-            local_path: Local path to save to
-
-        Returns:
-            DataFrame containing metadata of downloaded files
-        """
         try:
             metadata = self.dbx.files_get_metadata(dropbox_path)
             results = []
