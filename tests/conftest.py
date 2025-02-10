@@ -15,6 +15,10 @@ def mock_dbx(mocker):
 
 @pytest.fixture
 def mock_token_storage(mocker):
+    # Mock the keyring operations
+    mocker.patch("keyring.get_password", return_value="test_password")
+    mocker.patch("keyring.set_password")
+
     mock = mocker.patch("nova_pydrobox.token_storage.TokenStorage")
     storage = mock.return_value
     storage.get_tokens.return_value = {

@@ -15,21 +15,14 @@ from nova_pydrobox.operations.folders import FolderOperations
 @pytest.fixture
 def mock_dropbox_client() -> Generator[MagicMock, None, None]:
     """Create a mock Dropbox client."""
-    with patch("nova_pydrobox.auth.authenticator.get_dropbox_client") as mock:
-        # Create mock with Dropbox spec
-        client = MagicMock(spec=Dropbox)
-        # Set as return value for authenticator
-        mock.return_value = client
-        yield client
+    client = MagicMock(spec=Dropbox)
+    yield client
 
 
 @pytest.fixture
 def folder_ops(mock_dropbox_client: MagicMock) -> FolderOperations:
     """Create a FolderOperations instance with mock client."""
-    ops = FolderOperations()
-    # Explicitly set dbx attribute
-    ops.dbx = mock_dropbox_client
-    return ops
+    return FolderOperations(dbx_client=mock_dropbox_client)
 
 
 def test_create_folder(
