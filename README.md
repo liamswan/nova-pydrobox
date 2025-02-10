@@ -1,131 +1,159 @@
 # Nova-PyDropbox
 
-[![Build status](https://github.com/liamswan/nova-pydrobox/workflows/CI/badge.svg)](https://github.com/yourusername/nova-pydrobox/actions)
-[![codecov](https://codecov.io/gh/liamswan/nova-pydrobox/graph/badge.svg?token=ESQNIHM4QY)](https://codecov.io/gh/liamswan/nova-pydrobox)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Build Status](https://github.com/liamswan/nova-pydropbox/workflows/CI/badge.svg)](https://github.com/liamswan/nova-pydropbox/actions)  
+[![codecov](https://codecov.io/gh/liamswan/nova-pydropbox/graph/badge.svg?token=ESQNIHM4QY)](https://codecov.io/gh/liamswan/nova-pydropbox)  
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-A Python library providing an enhanced wrapper around the [Dropbox Python SDK](https://github.com/dropbox/dropbox-sdk-python), featuring secure authentication, comprehensive file operations, and progress tracking.
+Nova-PyDropbox is an enhanced Python wrapper around the [Dropbox Python SDK](https://github.com/dropbox/dropbox-sdk-python). It provides secure authentication, comprehensive file operations, progress tracking, and seamless integration with popular data science tools.
+
+**Table of Contents**
+- [Features](#features)
+- [Key Differences from Official SDK](#key-differences-from-official-sdk)
+- [Core Dependencies](#core-dependencies)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Configuration & Environment Setup](#configuration--environment-setup)
+- [Architecture](#architecture)
+- [Testing, CI/CD & Contributing](#testing-cicd--contributing)
+- [Known Limitations & Troubleshooting](#known-limitations--troubleshooting)
+- [Roadmap](#roadmap)
+- [License](#license)
+
+---
 
 ## Features
 
-- 🔐 Secure Authentication
-  - OAuth2 implementation using official Dropbox SDK
-  - System keyring integration with encrypted file fallback
-  - Automatic token refresh handling
-  
-- 📁 Enhanced File Operations
-  - Simplified high-level API around Dropbox SDK core methods
-  - Smart chunked upload/download (auto-switches based on file size)
-  - Automatic retry handling and error management
-  - Progress tracking with tqdm integration
-  
-- 📊 Advanced Features
-  - Pandas DataFrame responses for easy data manipulation
-  - Built-in file hash verification
-  - Automatic chunking for large files (>150MB)
-  - Recursive directory operations
+- **Secure Authentication**
+  - OAuth2 implementation using the official Dropbox SDK.
+  - System keyring integration with an encrypted fallback mechanism.
+  - Automatic token refresh handling.
 
-- 🔍 Structured File Management
-  - Typed file operations (Documents, Images, Videos, Audio)
-  - Advanced search with filters
-  - Folder size calculations
-  - Empty folder detection
+- **Enhanced File Operations**
+  - High-level API built on top of the Dropbox SDK.
+  - Intelligent, automatic switching for chunked uploads/downloads based on file size.
+  - Automatic retry and robust error management.
+  - Visual progress tracking with [tqdm](https://github.com/tqdm/tqdm).
 
-## Quick Start
+- **Advanced Data Science Integration**
+  - Pandas DataFrame responses for effortless data manipulation.
+  - Built-in file hash verification to ensure integrity.
+  - Recursive directory operations and advanced file filtering.
 
-```python
-from nova_pydrobox import Authenticator, FileOperations, FolderOperations
+- **Structured File Management**
+  - Typed file operations (e.g., Documents, Images, Videos, Audio).
+  - Advanced search with customizable filters.
+  - Folder size calculations and detection of empty folders.
 
-# First-time setup
-auth = Authenticator()
-auth.authenticate_dropbox()
-
-# Initialize operations
-files = FileOperations()
-folders = FolderOperations()
-
-# Upload with progress bar
-result = files.upload('local_file.txt', '/remote_file.txt')
-print(f"Upload result: {result}")
-
-# Download with automatic chunking
-result = files.download('/remote_file.txt', 'local_download.txt')
-
-# List files with pandas DataFrame output
-files = folders.list_files("/my_folder")
-print(files[['name', 'size', 'modified']])
-```
+---
 
 ## Key Differences from Official SDK
 
-Nova-PyDropbox enhances the official Dropbox SDK by providing:
+Nova-PyDropbox extends the official Dropbox SDK by offering:
 
 1. **Simplified API**
-   - High-level operations that handle common use cases
-   - Automatic handling of chunked transfers
-   - Progress bars for long operations
+   - High-level operations abstracting common use cases.
+   - Automated handling of chunked transfers.
+   - Integrated progress bars for extended operations.
 
 2. **Data Science Integration**
-   - Pandas DataFrame responses
-   - Structured data filtering
-   - Size and modification tracking
+   - Direct conversion of responses to Pandas DataFrames.
+   - Structured filtering and enhanced metadata tracking.
 
 3. **Enhanced Security**
-   - Keyring-based token storage
-   - Encrypted fallback storage
-   - Automatic token refresh
+   - Secure token storage via system keyring with encrypted fallback.
+   - Seamless and automated token refresh routines.
 
+---
 
 ## Core Dependencies
 
-- `dropbox`: Dropbox API client
-- `python-dotenv`: Environment variable management
-- `keyring`: Secure credential storage
-- `cryptography`: Encryption for fallback storage
-- `pandas`: Data manipulation
-- `tqdm`: Progress tracking
+- **`dropbox`**: Official Dropbox API client.
+- **`keyring`**: Secure credential storage.
+- **`cryptography`**: Encryption support for fallback token storage.
+- **`pandas`**: Data manipulation and analysis.
+- **`tqdm`**: Progress visualization.
 
-## Development
+---
 
-This project uses Poetry for dependency management and builds:
+## Installation
+
+Since Nova-PyDropbox is not yet published on PyPI, install it directly from GitHub:
+
+### Using pip
 
 ```bash
-# Install with development dependencies
-poetry install --with dev
-
-# Run tests
-poetry run pytest
-
-# Run tests with coverage
-poetry run pytest --cov=nova_pydrobox tests/ --cov-report=xml
+pip install git+https://github.com/liamswan/nova-pydropbox.git
 ```
 
-## Python Version Support
+### Using Poetry
 
-Tested on Python versions:
-- 3.8
-- 3.9
-- 3.10
-- 3.11
-- 3.12
-- 3.13
+```bash
+poetry add git+https://github.com/liamswan/nova-pydropbox.git
+```
 
-## CI/CD
+### Development Installation
 
-- Automated testing on Ubuntu, Windows, and macOS
-- Code coverage tracking with Codecov
-- Automated dependency updates
+For development purposes:
 
-## Contributing
+```bash
+# Clone the repository
+git clone https://github.com/liamswan/nova-pydropbox.git
+cd nova-pydropbox
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+# Install dependencies using Poetry
+poetry install
+```
+
+---
+
+## Quick Start
+
+Here’s a minimal example to get you started:
+
+```python
+from nova_pydropbox import Authenticator, FileOperations, FolderOperations
+
+# Perform one-time authentication setup.
+auth = Authenticator()
+auth.authenticate_dropbox()
+
+# Initialize file and folder operations.
+files = FileOperations()
+folders = FolderOperations()
+
+# Upload a file with a progress bar.
+upload_result = files.upload('local_file.txt', '/remote_file.txt')
+print(f"Upload result: {upload_result}")
+
+# Download a file with automatic chunking.
+download_result = files.download('/remote_file.txt', 'local_download.txt')
+
+# List files and receive a Pandas DataFrame for further analysis.
+df_files = folders.list_files("/my_folder")
+print(df_files[['name', 'size', 'modified']])
+```
+
+---
+
+## Configuration & Environment Setup
+
+Nova-PyDropbox uses environment variables for authentication. To configure:
+
+1. **Dropbox API Credentials**:  
+   Create a `.env` file in your project root with the following content:
+   ```dotenv
+   DROPBOX_APP_KEY=your_app_key
+   DROPBOX_APP_SECRET=your_app_secret
+   ```
+2. **Additional Configuration**:  
+   For further settings (such as encryption configurations), see the [Configuration Documentation](#) (link to your docs).
+
+---
 
 ## Architecture
+
+Nova-PyDropbox is organized to ensure modularity and scalability. Here’s an architectural overview:
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px' }}}%%
@@ -139,7 +167,7 @@ graph TB
             A[Project Root]
             A --> B[pyproject.toml]
             A --> D[tests/]
-            A --> E[nova_pydrobox/]
+            A --> E[nova_pydropbox/]
 
             E --> E1[__init__.py]
             E --> Auth[auth/]
@@ -227,68 +255,71 @@ graph TB
 ### Key Architecture Components
 
 1. **Project Structure**
-   - Modular organization with clear separation of concerns
-   - Core utilities and configurations centralized
-   - Type definitions and constants isolated
+   - Modular design for clear separation of concerns.
+   - Centralized configurations, utilities, and type definitions.
 
 2. **Authentication Flow**
-   - Token management with system keyring integration
-   - OAuth2 implementation
-   - Secure fallback storage mechanisms
+   - Secure token management using system keyring with fallback encryption.
+   - OAuth2-based authentication seamlessly integrated with the Dropbox client.
 
 3. **File Operations**
-   - File and folder operations
-   - Progress tracking integration
-   - Hash verification for integrity checks
+   - Efficient file and folder management with automated chunking and progress tracking.
+   - Integrity checks using built-in hash verification.
 
 4. **Dependencies**
-   - Core API integration (dropbox)
-   - Security components (keyring, cryptography)
-   - Utility libraries (pandas, tqdm)
-   - Testing framework (pytest)
+   - Core integration with Dropbox SDK and secure storage libraries.
+   - Enhanced functionality for data manipulation via pandas and user feedback through tqdm.
+   - Comprehensive testing supported by pytest and pytest-asyncio.
 
-The architecture emphasizes:
-- Clear separation of concerns
-- Secure credential management
-- Efficient file handling
-- Comprehensive testing support
+---
 
-## License
+## Testing, CI/CD & Contributing
 
-Distributed under the MIT License. See `LICENSE` for more information.
-    class P1,P2,P3,P4,P5,P6,P7,P8 dependency
-    class space1 space
+### CI/CD
+- **Multi-platform Testing:** Automated tests run on Ubuntu, Windows, and macOS.
+- **Code Coverage:** Tracked via Codecov.
+- **Automated Dependency Updates:** Integrated with CI pipelines.
+
+### Running Tests Locally
+
+```bash
+pytest
 ```
 
-### Key Architecture Components
+### Contributing
 
-1. **Project Structure**
-   - Modular organization with clear separation of concerns
-   - Core utilities and configurations centralized
-   - Type definitions and constants isolated
+Contributions are welcome! Follow these steps to contribute:
+1. Fork the repository.
+2. Create a feature branch:
+   ```bash
+   git checkout -b feature/amazing-feature
+   ```
+3. Commit your changes:
+   ```bash
+   git commit -m 'Add amazing feature'
+   ```
+4. Push to your branch:
+   ```bash
+   git push origin feature/amazing-feature
+   ```
+5. Open a Pull Request.
 
-2. **Authentication Flow**
-   - Token management with system keyring integration
-   - OAuth2 implementation
-   - Secure fallback storage mechanisms
+For detailed guidelines, please see our [CONTRIBUTING.md](#) (link to your contributing guide).
 
-3. **File Operations**
-   - File and folder operations
-   - Progress tracking integration
-   - Hash verification for integrity checks
+---
 
-4. **Dependencies**
-   - Core API integration (dropbox)
-   - Security components (keyring, cryptography)
-   - Utility libraries (pandas, tqdm)
-   - Testing framework (pytest)
+## Known Limitations & Troubleshooting
 
-The architecture emphasizes:
-- Clear separation of concerns
-- Secure credential management
-- Efficient file handling
-- Comprehensive testing support
+**Known Limitations:**
+- Automatic chunking may need manual tuning for certain edge-case file sizes.
+- Progress bar display might differ across terminal environments.
+- OAuth token refresh can encounter issues if the underlying keyring service is not available.
+
+**Troubleshooting Tips:**
+- Verify that your environment variables are correctly set.
+- Check logs for detailed error information.
+- For persistent issues, please open an issue on GitHub.
 
 ## License
 
-Distributed under the MIT License. See `LICENSE` for more information.
+Distributed under the MIT License. See [LICENSE](LICENSE) for more information.
