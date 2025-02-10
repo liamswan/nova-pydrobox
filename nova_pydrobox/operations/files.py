@@ -1,5 +1,6 @@
 """File operations module for nova-pydrobox."""
 
+import hashlib
 import logging
 from pathlib import Path
 from typing import List
@@ -41,11 +42,15 @@ class FileOperations(BaseOperations):
         self, content: bytes, dropbox_path: str, mode: WriteMode, local_path: str
     ) -> FileMetadata:
         """Upload a small file (≤ 150MB) to Dropbox."""
+        hasher = hashlib.sha256()
+        hasher.update(content)
+        content_hash = hasher.hexdigest()
+
         return self.dbx.files_upload(
             content,
             dropbox_path,
             mode=mode,
-            content_hash=self._calculate_file_hash(local_path),
+            content_hash=content_hash,
         )
 
     def _upload_large_file(

@@ -1,9 +1,9 @@
 """Tests for the file operations module."""
 
+import hashlib
 from datetime import datetime, timezone
 from unittest.mock import MagicMock, patch
 
-import dropbox
 import pandas as pd
 import pytest
 from dropbox.files import FileMetadata, FolderMetadata, WriteMode
@@ -21,7 +21,8 @@ def mock_dropbox_client():
 
 @pytest.fixture
 def file_ops(mock_dropbox_client):
-    return FileOperations()
+    """Create FileOperations instance with mocked client."""
+    return FileOperations(dbx_client=mock_dropbox_client)
 
 
 @pytest.fixture
@@ -39,59 +40,94 @@ def test_read_file_chunks(file_ops, test_file):
 
 def test_upload_small_file(file_ops, test_file, mock_dropbox_client):
     """Test uploading a small file."""
-    test_content = b"test content"
-    # Use dropbox.files.get_content_hash instead
-    file_ops._calculate_file_hash = MagicMock(
-        return_value=dropbox.files.get_content_hash(test_content)
-    )
-    mock_dropbox_client.files_upload.return_value = FileMetadata(
+    # Read file content
+    with open(test_file, "rb") as f:
+        test_content = f.read()
+
+    # Calculate hash exactly as the implementation does
+    hasher = hashlib.sha256()
+    hasher.update(test_content)
+    content_hash = hasher.hexdigest()
+
+    # Mock the upload response
+    mock_metadata = FileMetadata(
         name="test.txt",
         path_lower="/test.txt",
         client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
-        size=100,
-        content_hash="a" * 64,
+        size=len(test_content),
+        content_hash=content_hash,
     )
 
+    # Configure mock to verify input parameters
+    def verify_upload(*args, **kwargs):
+        assert kwargs.get("content_hash") == content_hash
+        assert kwargs.get("mode") == WriteMode.add
+        return mock_metadata
+
+    mock_dropbox_client.files_upload.side_effect = verify_upload
+
+    # Execute test
     result = file_ops._upload_small_file(
         test_content, "/test.txt", WriteMode.add, str(test_file)
     )
 
+    # Verify results
     assert isinstance(result, FileMetadata)
     assert result.name == "test.txt"
-    assert result.path_lower == "/test.txt"
-    mock_dropbox_client.files_upload.assert_called_once()
+    assert result.content_hash == content_hash
+    mock_dropbox_client.files_upload.assert_called_once_with(
+        test_content, "/test.txt", mode=WriteMode.add, content_hash=content_hash
+    )
 
 
 def test_upload_large_file(file_ops, test_file, mock_dropbox_client):
-    """Test uploading a large file."""
+    """Test uploading a large file by mocking the file size to be greater than 150MB."""
     # Mock file size to be > 150MB
     with patch("pathlib.Path.stat") as mock_stat:
+        # Create a large file to match the mocked size
+        file_content = b"0" * (200 * 1024 * 1024)  # 200MB
+        with open(test_file, "wb") as f:
+            f.write(file_content)
         mock_stat.return_value.st_size = 200 * 1024 * 1024  # 200MB
+
         session_id = "test_session"
         metadata = FileMetadata(
             name="test.txt",
             path_lower="/test.txt",
             client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
-            size=100,
-            content_hash="a" * 64,  # Use valid hash length
+            size=len(file_content),
+            content_hash="a" * 64,
         )
 
+        # Mock the session responses
         mock_dropbox_client.files_upload_session_start.return_value = MagicMock(
             session_id=session_id
         )
         mock_dropbox_client.files_upload_session_finish.return_value = metadata
 
+        # Execute test
         result = file_ops._upload_large_file(str(test_file), "/test.txt", WriteMode.add)
+
+        # Verify results
         assert isinstance(result, FileMetadata)
         assert result.name == "test.txt"
+
+        # Verify the session start was called with the first chunk
         mock_dropbox_client.files_upload_session_start.assert_called_once()
+        actual_chunk = mock_dropbox_client.files_upload_session_start.call_args[0][0]
+        assert isinstance(actual_chunk, bytes)
+        assert len(actual_chunk) == file_ops.CHUNK_SIZE
 
 
 def test_upload_file_small(file_ops, test_file):
     """Test upload_file with a small file."""
     with patch.object(file_ops, "_upload_small_file") as mock_upload:
+        with open(test_file, "rb") as f:
+            content = f.read()
         file_ops._upload_file(str(test_file), "/test.txt", WriteMode.add)
-        mock_upload.assert_called_once()
+        mock_upload.assert_called_once_with(
+            content, "/test.txt", WriteMode.add, str(test_file)
+        )
 
 
 def test_upload_file_large(file_ops, tmp_path):
