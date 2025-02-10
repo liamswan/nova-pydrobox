@@ -1,93 +1,114 @@
 # Nova-PyDropbox
 
-A Python CLI tool for interacting with Dropbox, featuring secure credential management and extensive file operations support.
+[![Build status](https://github.com/yourusername/nova-pydrobox/workflows/CI/badge.svg)](https://github.com/yourusername/nova-pydrobox/actions)
+[![Coverage](https://codecov.io/gh/yourusername/nova-pydrobox/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/nova-pydrobox)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+A Python library for enhanced Dropbox integration, featuring secure authentication, comprehensive file operations, and progress tracking.
 
 ## Features
 
-- 🔐 Secure credential storage using system keyring or encrypted file fallback
-- 🔄 OAuth2 authentication flow with automatic token refresh
-- 📁 Comprehensive file operations:
-  - File/folder upload with chunked transfer
-  - File/folder download with progress tracking
-  - List files with filtering options
-  - Advanced file operations (move, copy, delete)
-- 📊 DataFrame-based file listing results
-- 🎯 Hash verification for file integrity
-- 📈 Progress tracking for large operations
-- 💪 Strong typing and error handling
-- 🛡️ Secure token management
+- 🔐 Secure Authentication
+  - OAuth2 implementation
+  - System keyring integration with encrypted file fallback
+  - Automatic token refresh
+  
+- 📁 File Operations
+  - File and folder operations (upload, download, list)
+  - Directory size calculation
+  - Empty folder checking
+  - File hash verification
+  
+- 📊 Progress Tracking
+  - Real-time progress bars using tqdm
+  - File size formatting
+  - Time estimation for operations
+  - Customizable progress display
+
+- 🔍 File Type Support
+  - Documents
+  - Images
+  - Videos
+  - Audio
+  - Folders
 
 ## Installation
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/nova-pydrobox.git
-cd nova-pydrobox
-
-# Install using Poetry (recommended)
+# Using Poetry (recommended)
 poetry install
 
 # Or using pip
-pip install .
+pip install nova-pydrobox
 ```
 
 ## Quick Start
 
-1. First, set up authentication:
-```bash
-python dropbox_auth.py
-```
-This will:
-- Open the Dropbox App Console in your browser
-- Guide you through creating a Dropbox app
-- Help you authenticate with your Dropbox account
-
-2. List your files:
-```bash
-python list_files.py
-```
-
-## File Operations
-
-The package provides comprehensive file operations through the `DropboxOperations` class:
-
-- Upload files/folders with progress tracking
-- Download files/folders with chunked transfer
-- List files with filtering by type and size
-- Hash verification for file integrity
-- DataFrame-based results for easy analysis
-
-Example filter usage:
 ```python
-filter_criteria = FileFilter(
-    file_type=FileType.DOCUMENT,
-    min_size=1024,  # 1KB
-    max_size=1024*1024,  # 1MB
-    recursive=True
-)
+from nova_pydrobox import FileOperations, FolderOperations
+from nova_pydrobox.constants import FileType
+
+# Initialize operations
+file_ops = FileOperations()
+folder_ops = FolderOperations()
+
+# Check folder size
+size = folder_ops.get_folder_size("/my_folder")
+print(f"Folder size: {size} bytes")
+
+# Check if folder is empty
+is_empty = folder_ops.is_empty("/my_folder")
+print(f"Folder is empty: {is_empty}")
 ```
 
-## Security
+## Core Dependencies
 
-- Credentials are stored securely using the system keyring when available
-- Fallback to encrypted file storage when keyring is not available
-- OAuth2 flow with PKCE for enhanced security
-- Automatic token refresh handling
-- File integrity verification through hashing
+- `dropbox`: Dropbox API client
+- `python-dotenv`: Environment variable management
+- `keyring`: Secure credential storage
+- `cryptography`: Encryption for fallback storage
+- `pandas`: Data manipulation
+- `tqdm`: Progress tracking
 
-## Dependencies
+## Development
 
-Core:
-- dropbox: Dropbox API client
-- python-dotenv: Environment variable management
-- keyring: Secure credential storage
-- cryptography: Encryption for fallback storage
-- pandas: Data manipulation and analysis
-- tqdm: Progress bar functionality
+This project uses Poetry for dependency management and builds:
 
-Optional:
-- secretstorage: Linux keyring support
-- keyrings-alt: Alternative keyring backends
+```bash
+# Install with development dependencies
+poetry install --with dev
+
+# Run tests
+poetry run pytest
+
+# Run tests with coverage
+poetry run pytest --cov=nova_pydrobox tests/ --cov-report=xml
+```
+
+## Python Version Support
+
+Tested on Python versions:
+- 3.8
+- 3.9
+- 3.10
+- 3.11
+- 3.12
+- 3.13
+
+## CI/CD
+
+- Automated testing on Ubuntu, Windows, and macOS
+- Code coverage tracking with Codecov
+- Automated dependency updates
+
+## Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## Architecture
 
@@ -106,40 +127,46 @@ graph TB
             A --> E[nova_pydrobox/]
 
             E --> E1[__init__.py]
-            E --> E2[dropbox_auth.py]
-            E --> E3[dropbox_operations.py]
-            E --> E4[token_storage.py]
+            E --> Auth[auth/]
+            E --> Ops[operations/]
+            E --> Utils[utils/]
+            E --> Config[config.py]
+            E --> Constants[constants.py]
+            E --> Types[types.py]
+            E --> Exceptions[exceptions.py]
+
+            Auth --> A1[authenticator.py]
+            Auth --> A2[token_storage.py]
+            Ops --> O1[operations.py]
         end
 
-        subgraph Token Storage Operations
+        subgraph Authentication Flow
             direction TB
-            E4 --> T1[TokenStorage Class]
-            T1 --> T2[save_tokens]
-            T1 --> T3[get_tokens]
-            T1 --> T4[clear_tokens]
-            T1 --> T5[_test_keyring]
-            T1 --> T6[_get_or_create_encryption_key]
+            A1 --> AF1[setup_credentials]
+            A1 --> AF2[authenticate_dropbox]
+            A1 --> AF3[get_dropbox_client]
+            A2 --> TS1[TokenStorage]
+            TS1 --> TS2[save_tokens]
+            TS1 --> TS3[get_tokens]
+            TS1 --> TS4[clear_tokens]
         end
 
         subgraph File Operations
             direction TB
-            E3 --> O1[DropboxOperations Class]
-            O1 --> O2[upload]
-            O1 --> O3[download]
-            O1 --> O4[list_files]
-            O2 --> O5[_upload_file]
-            O2 --> O6[_upload_large_file]
-            O3 --> O7[_download_file]
-            O3 --> O8[_download_large_file]
-        end
-
-        subgraph Authentication Operations
-            direction TB
-            E2 --> A1[setup_credentials]
-            E2 --> A2[authenticate_dropbox]
-            E2 --> A3[get_dropbox_client]
-            A2 --> T2
-            A3 --> T3
+            O1 --> FO1[DropboxOperations]
+            FO1 --> FO2[sync_methods]
+            FO1 --> FO3[async_methods]
+            
+            FO2 --> Sync1[upload]
+            FO2 --> Sync2[download]
+            FO2 --> Sync3[list_files]
+            FO2 --> Sync4[search]
+            
+            FO3 --> Async1[upload_async]
+            FO3 --> Async2[download_async]
+            
+            FO1 --> Helper1[_process_metadata]
+            FO1 --> Helper2[_calculate_hash]
         end
 
         subgraph Dependencies
@@ -150,15 +177,20 @@ graph TB
             P4[cryptography]
             P5[pandas]
             P6[tqdm]
+            P7[pytest]
+            P8[pytest-asyncio]
         end
 
-        E2 --> P1
-        E2 --> P2
-        E3 --> P1
-        E3 --> P5
-        E3 --> P6
-        E4 --> P3
-        E4 --> P4
+        %% Dependency connections
+        Auth --> P1
+        Auth --> P2
+        Auth --> P3
+        A2 --> P4
+        Ops --> P1
+        Ops --> P5
+        Ops --> P6
+        D --> P7
+        D --> P8
     end
 
     %% Style definitions
@@ -170,11 +202,42 @@ graph TB
     classDef space fill:none,stroke:none
 
     class A default
-    class B,D,E,E1,E2,E3,E4 module
-    class T1,O1 storage
-    class A1,A2,A3,O2,O3,O4,O5,O6,O7,O8,T2,T3,T4,T5,T6 function
-    class P1,P2,P3,P4,P5,P6 dependency
+    class B,D,E,E1,Auth,Ops,Utils,Config,Constants,Types,Exceptions module
+    class TS1 storage
+    class AF1,AF2,AF3,TS2,TS3,TS4,FO2,FO3,Helper1,Helper2 function
+    class P1,P2,P3,P4,P5,P6,P7,P8 dependency
     class space1 space
 ```
 
-This updated documentation better reflects the current state of the project, including the comprehensive file operations capabilities, enhanced security features, and the addition of progress tracking and data handling features. The architecture diagram now shows the detailed structure of the DropboxOperations class and its relationships with other components.
+### Key Architecture Components
+
+1. **Project Structure**
+   - Modular organization with clear separation of concerns
+   - Core utilities and configurations centralized
+   - Type definitions and constants isolated
+
+2. **Authentication Flow**
+   - Token management with system keyring integration
+   - OAuth2 implementation
+   - Secure fallback storage mechanisms
+
+3. **File Operations**
+   - File and folder operations
+   - Progress tracking integration
+   - Hash verification for integrity checks
+
+4. **Dependencies**
+   - Core API integration (dropbox)
+   - Security components (keyring, cryptography)
+   - Utility libraries (pandas, tqdm)
+   - Testing framework (pytest)
+
+The architecture emphasizes:
+- Clear separation of concerns
+- Secure credential management
+- Efficient file handling
+- Comprehensive testing support
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for more information.

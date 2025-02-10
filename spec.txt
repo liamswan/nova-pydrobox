@@ -27,3 +27,9 @@ support filtering by file type and file size and return a dataframe of the resul
 - You should also create all the necessary documentation for the above functionality. This should include a README.md file and a docstring for each class and method.
 
 
+[tool.poetry]
+name = "nova-pydrobox"
+version = "0.1.0"
+description = "A Python CLI tool for interacting with Dropbox"
+authors = ["Your Name <your.email@example.com>"]
+license = "MIT"  # or "Apache-2.0"
