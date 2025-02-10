@@ -36,10 +36,10 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
 
-      - name: Install Poetry (Windows)
-        if: runner.os == 'Windows'
+      - name: Install Poetry
         run: |
-          iex (New-Object Net.WebClient).DownloadString('https://install.python-poetry.org')
+          (Invoke-WebRequest -Uri https://install.python-poetry.org -UseBasicParsing).Content | python -
+        shell: pwsh
 
       - name: Install dependencies
         run: poetry install

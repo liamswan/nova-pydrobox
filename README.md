@@ -1,66 +1,81 @@
 # Nova-PyDropbox
 
-[![Build status](https://github.com/yourusername/nova-pydrobox/workflows/CI/badge.svg)](https://github.com/yourusername/nova-pydrobox/actions)
-[![Coverage](https://codecov.io/gh/yourusername/nova-pydrobox/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/nova-pydrobox)
+[![Build status](https://github.com/liamswan/nova-pydrobox/workflows/CI/badge.svg)](https://github.com/yourusername/nova-pydrobox/actions)
+[![codecov](https://codecov.io/gh/liamswan/nova-pydrobox/graph/badge.svg?token=ESQNIHM4QY)](https://codecov.io/gh/liamswan/nova-pydrobox)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-A Python library for enhanced Dropbox integration, featuring secure authentication, comprehensive file operations, and progress tracking.
+A Python library providing an enhanced wrapper around the [Dropbox Python SDK](https://github.com/dropbox/dropbox-sdk-python), featuring secure authentication, comprehensive file operations, and progress tracking.
 
 ## Features
 
 - 🔐 Secure Authentication
-  - OAuth2 implementation
+  - OAuth2 implementation using official Dropbox SDK
   - System keyring integration with encrypted file fallback
-  - Automatic token refresh
+  - Automatic token refresh handling
   
-- 📁 File Operations
-  - File and folder operations (upload, download, list)
-  - Directory size calculation
-  - Empty folder checking
-  - File hash verification
+- 📁 Enhanced File Operations
+  - Simplified high-level API around Dropbox SDK core methods
+  - Smart chunked upload/download (auto-switches based on file size)
+  - Automatic retry handling and error management
+  - Progress tracking with tqdm integration
   
-- 📊 Progress Tracking
-  - Real-time progress bars using tqdm
-  - File size formatting
-  - Time estimation for operations
-  - Customizable progress display
+- 📊 Advanced Features
+  - Pandas DataFrame responses for easy data manipulation
+  - Built-in file hash verification
+  - Automatic chunking for large files (>150MB)
+  - Recursive directory operations
 
-- 🔍 File Type Support
-  - Documents
-  - Images
-  - Videos
-  - Audio
-  - Folders
-
-## Installation
-
-```bash
-# Using Poetry (recommended)
-poetry install
-
-# Or using pip
-pip install nova-pydrobox
-```
+- 🔍 Structured File Management
+  - Typed file operations (Documents, Images, Videos, Audio)
+  - Advanced search with filters
+  - Folder size calculations
+  - Empty folder detection
 
 ## Quick Start
 
 ```python
-from nova_pydrobox import FileOperations, FolderOperations
-from nova_pydrobox.constants import FileType
+from nova_pydrobox import Authenticator, FileOperations, FolderOperations
+
+# First-time setup
+auth = Authenticator()
+auth.authenticate_dropbox()
 
 # Initialize operations
-file_ops = FileOperations()
-folder_ops = FolderOperations()
+files = FileOperations()
+folders = FolderOperations()
 
-# Check folder size
-size = folder_ops.get_folder_size("/my_folder")
-print(f"Folder size: {size} bytes")
+# Upload with progress bar
+result = files.upload('local_file.txt', '/remote_file.txt')
+print(f"Upload result: {result}")
 
-# Check if folder is empty
-is_empty = folder_ops.is_empty("/my_folder")
-print(f"Folder is empty: {is_empty}")
+# Download with automatic chunking
+result = files.download('/remote_file.txt', 'local_download.txt')
+
+# List files with pandas DataFrame output
+files = folders.list_files("/my_folder")
+print(files[['name', 'size', 'modified']])
 ```
+
+## Key Differences from Official SDK
+
+Nova-PyDropbox enhances the official Dropbox SDK by providing:
+
+1. **Simplified API**
+   - High-level operations that handle common use cases
+   - Automatic handling of chunked transfers
+   - Progress bars for long operations
+
+2. **Data Science Integration**
+   - Pandas DataFrame responses
+   - Structured data filtering
+   - Size and modification tracking
+
+3. **Enhanced Security**
+   - Keyring-based token storage
+   - Encrypted fallback storage
+   - Automatic token refresh
+
 
 ## Core Dependencies
 
@@ -156,15 +171,15 @@ graph TB
             O1 --> FO1[DropboxOperations]
             FO1 --> FO2[sync_methods]
             FO1 --> FO3[async_methods]
-            
+
             FO2 --> Sync1[upload]
             FO2 --> Sync2[download]
             FO2 --> Sync3[list_files]
             FO2 --> Sync4[search]
-            
+
             FO3 --> Async1[upload_async]
             FO3 --> Async2[download_async]
-            
+
             FO1 --> Helper1[_process_metadata]
             FO1 --> Helper2[_calculate_hash]
         end
@@ -205,6 +220,42 @@ graph TB
     class B,D,E,E1,Auth,Ops,Utils,Config,Constants,Types,Exceptions module
     class TS1 storage
     class AF1,AF2,AF3,TS2,TS3,TS4,FO2,FO3,Helper1,Helper2 function
+    class P1,P2,P3,P4,P5,P6,P7,P8 dependency
+    class space1 space
+```
+
+### Key Architecture Components
+
+1. **Project Structure**
+   - Modular organization with clear separation of concerns
+   - Core utilities and configurations centralized
+   - Type definitions and constants isolated
+
+2. **Authentication Flow**
+   - Token management with system keyring integration
+   - OAuth2 implementation
+   - Secure fallback storage mechanisms
+
+3. **File Operations**
+   - File and folder operations
+   - Progress tracking integration
+   - Hash verification for integrity checks
+
+4. **Dependencies**
+   - Core API integration (dropbox)
+   - Security components (keyring, cryptography)
+   - Utility libraries (pandas, tqdm)
+   - Testing framework (pytest)
+
+The architecture emphasizes:
+- Clear separation of concerns
+- Secure credential management
+- Efficient file handling
+- Comprehensive testing support
+
+## License
+
+Distributed under the MIT License. See `LICENSE` for more information.
     class P1,P2,P3,P4,P5,P6,P7,P8 dependency
     class space1 space
 ```
