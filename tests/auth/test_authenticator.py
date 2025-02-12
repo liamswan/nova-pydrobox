@@ -57,9 +57,7 @@ def test_setup_credentials(monkeypatch):
     print("DEBUG: Webbrowser mocked")
 
     app_key, app_secret = setup_credentials()
-    print(
-        f"DEBUG: setup_credentials returned: app_key='{app_key}', app_secret='{app_secret}'"
-    )
+    print("DEBUG: setup_credentials returned successfully")
 
     assert app_key == "test_key"
     assert app_secret == "test_secret"
