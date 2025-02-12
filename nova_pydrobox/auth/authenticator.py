@@ -83,7 +83,7 @@ class Authenticator:
                 "refresh_token": oauth_result.refresh_token,
             }
 
-            print(f"DEBUG: Tokens to be saved: {tokens}")
+            print("DEBUG: Tokens to be saved (sensitive data not displayed)")
             for attempt in range(2):  # Retry saving tokens up to 2 times
                 print(f"DEBUG: Attempt {attempt + 1} to save tokens")
                 if self.storage.save_tokens(tokens):
