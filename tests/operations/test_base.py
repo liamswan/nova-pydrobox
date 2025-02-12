@@ -282,3 +282,136 @@ def test_search(base_ops, mock_dropbox_client):
     assert isinstance(result, pd.DataFrame)
     assert len(result) == 1
     assert result.iloc[0]["name"] == "test.txt"
+
+
+def test_search_with_pagination(base_ops, mock_dropbox_client):
+    """Test search operation with pagination."""
+    metadata1 = FileMetadata(
+        name="test1.txt",
+        path_lower="/test1.txt",
+        client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
+        size=100,
+        content_hash="a" * 64,
+    )
+    metadata2 = FileMetadata(
+        name="test2.txt",
+        path_lower="/test2.txt",
+        client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
+        size=200,
+        content_hash="b" * 64,
+    )
+    
+    match1 = MagicMock(metadata=metadata1)
+    match2 = MagicMock(metadata=metadata2)
+    
+    result1 = MagicMock(matches=[match1], has_more=True, cursor="cursor123")
+    result2 = MagicMock(matches=[match2], has_more=False)
+    
+    mock_dropbox_client.files_search_v2.return_value = result1
+    mock_dropbox_client.files_search_continue_v2.return_value = result2
+
+    result = base_ops.search("test")
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == 2
+    assert result.iloc[0]["name"] == "test1.txt"
+    assert result.iloc[1]["name"] == "test2.txt"
+
+
+def test_search_with_filter(base_ops, mock_dropbox_client):
+    """Test search operation with file filter."""
+    metadata1 = FileMetadata(
+        name="small.txt",
+        path_lower="/small.txt",
+        client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
+        size=100,
+        content_hash="a" * 64,
+    )
+    metadata2 = FileMetadata(
+        name="large.txt",
+        path_lower="/large.txt",
+        client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
+        size=1000,
+        content_hash="b" * 64,
+    )
+    
+    match1 = MagicMock(metadata=metadata1)
+    match2 = MagicMock(metadata=metadata2)
+    mock_result = MagicMock(matches=[match1, match2], has_more=False)
+    mock_dropbox_client.files_search_v2.return_value = mock_result
+
+    filter_criteria = FileFilter(min_size=500)
+    result = base_ops.search("test", filter_criteria=filter_criteria)
+    assert len(result) == 1
+    assert result.iloc[0]["name"] == "large.txt"
+
+
+def test_move_api_error(base_ops, mock_dropbox_client):
+    """Test move operation with API error."""
+    mock_dropbox_client.files_move_v2.side_effect = dropbox.exceptions.ApiError(
+        request_id="test_id",
+        error="test_error",
+        user_message_text="Test error message",
+        user_message_locale="en",
+    )
+
+    with pytest.raises(dropbox.exceptions.ApiError):
+        base_ops.move("/test.txt", "/new/test.txt")
+
+
+def test_copy_api_error(base_ops, mock_dropbox_client):
+    """Test copy operation with API error."""
+    mock_dropbox_client.files_copy_v2.side_effect = dropbox.exceptions.ApiError(
+        request_id="test_id",
+        error="test_error",
+        user_message_text="Test error message",
+        user_message_locale="en",
+    )
+
+    with pytest.raises(dropbox.exceptions.ApiError):
+        base_ops.copy("/test.txt", "/new/test.txt")
+
+
+def test_rename_api_error(base_ops, mock_dropbox_client):
+    """Test rename operation with API error."""
+    mock_dropbox_client.files_move_v2.side_effect = dropbox.exceptions.ApiError(
+        request_id="test_id",
+        error="test_error",
+        user_message_text="Test error message",
+        user_message_locale="en",
+    )
+
+    with pytest.raises(dropbox.exceptions.ApiError):
+        base_ops.rename("/test.txt", "new.txt")
+
+
+def test_list_files_root_path(base_ops, mock_dropbox_client):
+    """Test file listing with root path."""
+    entries = [
+        FileMetadata(
+            name="test.txt",
+            path_lower="/test.txt",
+            client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
+            size=100,
+            content_hash="a" * 64,
+        )
+    ]
+    mock_result = ListFolderResult(entries=entries, cursor="cursor123", has_more=False)
+    mock_dropbox_client.files_list_folder.return_value = mock_result
+
+    result = base_ops.list_files("/")
+    assert isinstance(result, pd.DataFrame)
+    assert len(result) == 1
+    mock_dropbox_client.files_list_folder.assert_called_once_with("", recursive=False)
+
+
+def test_search_api_error(base_ops, mock_dropbox_client):
+    """Test search operation with API error."""
+    mock_dropbox_client.files_search_v2.side_effect = dropbox.exceptions.ApiError(
+        request_id="test_id",
+        error="test_error",
+        user_message_text="Test error message",
+        user_message_locale="en",
+    )
+
+    with pytest.raises(dropbox.exceptions.ApiError):
+        base_ops.search("test")

@@ -228,3 +228,68 @@ def test_chmod_called(mock_config_dir):
         # Assert that write_bytes was called with the generated key
         mock_write.assert_called_once_with(generated_key)
         mock_chmod.assert_called_once_with(0o600)
+
+
+def test_get_or_create_encryption_key_error(mock_config_dir):
+    """Test error handling in _get_or_create_encryption_key."""
+    storage = TokenStorage()
+    with (
+        patch(
+            "nova_pydrobox.auth.token_storage.TokenStorage._get_config_dir",
+            return_value=mock_config_dir,
+        ),
+        patch.object(Path, "exists", return_value=True),
+        patch.object(Path, "read_bytes", side_effect=PermissionError("Access denied")),
+    ):
+        with pytest.raises(PermissionError) as exc_info:
+            storage._get_or_create_encryption_key()
+        assert "Access denied" in str(exc_info.value)
+
+
+def test_get_tokens_file_decrypt_error(mock_config_dir):
+    """Test error handling in get_tokens for file backend decryption error."""
+    storage = TokenStorage()
+    storage.use_keyring = False
+
+    with (
+        patch(
+            "nova_pydrobox.auth.token_storage.TokenStorage._get_config_dir",
+            return_value=mock_config_dir,
+        ),
+        patch("pathlib.Path.exists", return_value=True),
+        patch("pathlib.Path.read_bytes", return_value=b"invalid_encrypted_data"),
+        patch(
+            "nova_pydrobox.auth.token_storage.TokenStorage._get_or_create_encryption_key",
+            return_value=Fernet.generate_key(),
+        ),
+    ):
+        result = storage.get_tokens()
+        assert result is None
+
+
+def test_get_tokens_keyring_partial():
+    """Test get_tokens with keyring when not all required tokens are present."""
+    storage = TokenStorage()
+    storage.use_keyring = True
+
+    def mock_get_password(service, key):
+        # Only return some of the required tokens
+        tokens = {
+            "app_key": "test_key",
+            "app_secret": "test_secret",
+            # Missing access_token and refresh_token
+        }
+        return tokens.get(key)
+
+    with patch("keyring.get_password", side_effect=mock_get_password):
+        result = storage.get_tokens()
+        assert result is None
+
+
+def test_test_keyring_error():
+    """Test error handling in _test_keyring."""
+    storage = TokenStorage()
+    
+    with patch("keyring.set_password", side_effect=RuntimeError("Keyring error")):
+        result = storage._test_keyring()
+        assert result is False

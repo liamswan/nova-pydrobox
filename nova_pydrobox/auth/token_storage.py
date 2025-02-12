@@ -86,7 +86,12 @@ class TokenStorage:
                     value = keyring.get_password(self.service_name, key)
                     if value:
                         tokens[key] = value
-                return tokens if tokens else None
+                # Ensure all required tokens are present
+                required_keys = ["app_key", "app_secret", "access_token", "refresh_token"]
+                if all(key in tokens for key in required_keys):
+                    return tokens
+                else:
+                    return None
             else:
                 if not self._fallback_path().exists():
                     return None

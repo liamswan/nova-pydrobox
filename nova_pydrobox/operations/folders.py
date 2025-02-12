@@ -6,7 +6,7 @@ import dropbox
 import pandas as pd
 from dropbox.files import CreateFolderError, FolderMetadata
 
-from nova_pydrobox.operations.base import BaseOperations
+from nova_pydrobox.operations.base import BaseOperations, FileFilter
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class FolderOperations(BaseOperations):
             DataFrame containing the folder structure with paths and metadata.
         """
         try:
-            return self.list_files(path, recursive=True)
+            return self.list_files(path, filter_criteria=FileFilter(recursive=True))
         except dropbox.exceptions.ApiError as e:
             logger.error(f"Error getting folder structure for {path}: {e}")
             raise

@@ -286,3 +286,136 @@ def test_download_directory(file_ops, tmp_path, mock_dropbox_client):
     result = file_ops.download("/test_dir", str(local_dir))
     assert isinstance(result, pd.DataFrame)
     assert len(result) == 2
+
+
+def test_upload_error_handling(file_ops, test_file, mock_dropbox_client):
+    """Test error handling during file upload."""
+    mock_dropbox_client.files_upload.side_effect = Exception("Upload failed")
+    
+    with pytest.raises(Exception):
+        file_ops.upload(str(test_file), "/test.txt")
+
+
+def test_download_error_handling(file_ops, tmp_path, mock_dropbox_client):
+    """Test error handling during file download."""
+    mock_dropbox_client.files_get_metadata.side_effect = Exception("Download failed")
+    
+    with pytest.raises(Exception):
+        file_ops.download("/test.txt", str(tmp_path / "test.txt"))
+
+
+def test_large_file_upload_session_error(file_ops, tmp_path, mock_dropbox_client):
+    """Test error handling in large file upload session."""
+    large_file = tmp_path / "large.txt"
+    large_file.write_bytes(b"0" * (150 * 1024 * 1024 + 1))  # Slightly over 150MB
+
+    mock_dropbox_client.files_upload_session_start.return_value = MagicMock(session_id="test_session")
+    mock_dropbox_client.files_upload_session_append_v2.side_effect = Exception("Session error")
+    
+    with pytest.raises(Exception):
+        file_ops._upload_large_file(str(large_file), "/large.txt", WriteMode.add)
+
+
+def test_large_file_download_session_error(file_ops, tmp_path, mock_dropbox_client):
+    """Test error handling in large file download session."""
+    local_path = tmp_path / "large.txt"
+    metadata = FileMetadata(
+        name="large.txt",
+        path_lower="/large.txt",
+        client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
+        size=200 * 1024 * 1024,  # 200MB
+        content_hash="a" * 64,
+    )
+
+    mock_dropbox_client.files_get_metadata.return_value = metadata
+    mock_dropbox_client.files_download_session_start.side_effect = Exception("Session error")
+    
+    with pytest.raises(Exception):
+        file_ops._download_large_file("/large.txt", str(local_path))
+
+
+def test_directory_upload_error(file_ops, tmp_path):
+    """Test error handling during directory upload."""
+    test_dir = tmp_path / "test_dir"
+    test_dir.mkdir()
+    (test_dir / "file1.txt").write_text("content1")
+
+    with patch.object(file_ops, "_upload_file", side_effect=Exception("Upload failed")):
+        with pytest.raises(Exception):
+            file_ops.upload(str(test_dir), "/test_dir")
+
+
+def test_directory_download_error(file_ops, tmp_path, mock_dropbox_client):
+    """Test error handling during directory download."""
+    mock_dropbox_client.files_get_metadata.return_value = FolderMetadata(
+        name="test_dir", path_lower="/test_dir", id="id123"
+    )
+    
+    file_ops.list_files = MagicMock(
+        return_value=pd.DataFrame([{
+            "name": "file1.txt",
+            "path": "/test_dir/file1.txt",
+            "type": "file",
+            "size": 100,
+            "modified": "2023-01-01T00:00:00Z",
+            "hash": "a" * 64,
+        }])
+    )
+    
+    with patch.object(file_ops, "_download_file", side_effect=Exception("Download failed")):
+        with pytest.raises(Exception):
+            file_ops.download("/test_dir", str(tmp_path / "download_dir"))
+
+
+def test_upload_session_append(file_ops, tmp_path, mock_dropbox_client):
+    """Test upload session append for large files."""
+    large_file = tmp_path / "large.txt"
+    file_size = 200 * 1024 * 1024  # 200MB
+    large_file.write_bytes(b"0" * file_size)
+
+    session_id = "test_session"
+    metadata = FileMetadata(
+        name="large.txt",
+        path_lower="/large.txt",
+        client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
+        size=file_size,
+        content_hash="a" * 64,
+    )
+
+    mock_dropbox_client.files_upload_session_start.return_value = MagicMock(session_id=session_id)
+    mock_dropbox_client.files_upload_session_finish.return_value = metadata
+
+    result = file_ops._upload_large_file(str(large_file), "/large.txt", WriteMode.add)
+    assert isinstance(result, FileMetadata)
+    assert mock_dropbox_client.files_upload_session_append_v2.call_count > 0
+
+
+def test_download_session_append(file_ops, tmp_path, mock_dropbox_client):
+    """Test download session append for large files."""
+    local_path = tmp_path / "large.txt"
+    metadata = FileMetadata(
+        name="large.txt",
+        path_lower="/large.txt",
+        client_modified=datetime(2023, 1, 1, 0, 0, tzinfo=timezone.utc),
+        size=200 * 1024 * 1024,  # 200MB
+        content_hash="a" * 64,
+    )
+
+    mock_dropbox_client.files_get_metadata.return_value = metadata
+    mock_session_result = MagicMock(
+        content=b"0" * file_ops.CHUNK_SIZE,
+        session_id="test_session"
+    )
+    mock_dropbox_client.files_download_session_start.return_value = (metadata, mock_session_result)
+    mock_dropbox_client.files_download_session_append.return_value = MagicMock(
+        content=b"0" * (file_ops.CHUNK_SIZE // 2),  # Last chunk smaller to end session
+        session_id="test_session"
+    )
+
+    # Mock UploadSessionCursor since DownloadSessionCursor doesn't exist
+    with patch("dropbox.files.UploadSessionCursor") as mock_cursor:
+        mock_cursor.return_value = MagicMock()
+        result = file_ops._download_large_file("/large.txt", str(local_path))
+        assert isinstance(result, FileMetadata)
+        assert mock_dropbox_client.files_download_session_append.call_count > 0
+        assert local_path.exists()

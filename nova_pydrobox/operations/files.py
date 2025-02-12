@@ -178,7 +178,7 @@ class FileOperations(BaseOperations):
                         if len(data) < self.CHUNK_SIZE:
                             break
 
-                        cursor = dropbox.files.DownloadSessionCursor(
+                        cursor = dropbox.files.UploadSessionCursor(
                             session_id=result.session_id, offset=f.tell()
                         )
             return metadata

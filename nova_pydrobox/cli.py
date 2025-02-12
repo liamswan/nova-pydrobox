@@ -4,7 +4,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from nova_pydrobox.auth import Authenticator
+from nova_pydrobox.auth import Authenticator  # Add TokenStorage import
 from nova_pydrobox.operations import FolderOperations
 
 

@@ -66,7 +66,15 @@ class Authenticator:
             webbrowser.open(authorize_url)
             auth_code = input("\nEnter the authorization code here: ").strip()
 
-            oauth_result = flow.finish(auth_code)
+            while True:
+                try:
+                    oauth_result = flow.finish(auth_code)
+                    break
+                except dropbox.exceptions.AuthError as e:
+                    print(f"\nAuthentication failed: {e}")
+                    auth_code = input(
+                        "\nInvalid auth code. Please enter the authorization code again: "
+                    ).strip()
 
             tokens = {
                 "app_key": app_key,
@@ -75,14 +83,15 @@ class Authenticator:
                 "refresh_token": oauth_result.refresh_token,
             }
 
-            if self.storage.save_tokens(tokens):
-                print("\nAuthentication successful! Tokens securely stored.")
-                return True
-            else:
-                print("\nError saving tokens.")
-                return False
-        except dropbox.exceptions.AuthError as e:
-            print(f"\nAuthentication failed: {e}")
+            print(f"DEBUG: Tokens to be saved: {tokens}")
+            for attempt in range(2):  # Retry saving tokens up to 2 times
+                print(f"DEBUG: Attempt {attempt + 1} to save tokens")
+                if self.storage.save_tokens(tokens):
+                    print("\nAuthentication successful! Tokens securely stored.")
+                    return True
+                else:
+                    print("\nError saving tokens. Retrying...")
+            print("\nError saving tokens after retrying.")
             return False
         except Exception as e:
             print(f"\nAuthentication failed: {e}")
@@ -102,7 +111,8 @@ class Authenticator:
             try:
                 dbx.users_get_current_account()
             except dropbox.exceptions.AuthError:
-                dbx.refresh_access_token()
+                logger.error("Authentication error, unable to refresh token")
+                return None
             logger.info("Successfully connected to Dropbox")
             return dbx
         except Exception as e:
