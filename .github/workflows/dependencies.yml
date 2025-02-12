@@ -1,4 +1,7 @@
-name: Update Poetry Dependencies
+name: "Dependencies Workflow"
+
+# Default permissions for all jobs
+permissions: read-all
 
 on:
   schedule:
@@ -6,10 +9,34 @@ on:
   workflow_dispatch:
 
 jobs:
-  update-dependencies:
+  dependency-check:
+    permissions:
+      contents: read
+      security-events: write
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          
+      # Add your dependency scanning steps here
+      # For example, using safety or dependabot
+
+  update-dependencies:
+    permissions:
+      contents: write  # Required for pushing changes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4  # Update to v4
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -27,7 +54,7 @@ jobs:
 
       # Cache the virtual environment based on the poetry.lock file
       - name: Cache virtual environment
-        uses: actions/cache@v3
+        uses: actions/cache@v4  # Update to v4
         with:
           path: .venv
           key: venv-${{ runner.os }}-${{ hashFiles('**/poetry.lock') }}
@@ -48,6 +75,7 @@ jobs:
           git commit -m "Update Poetry dependencies" || echo "No changes to commit"
 
       - name: Push Changes
-        uses: ad-m/github-push-action@v0.6.0
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+        # Use built-in push instead of third-party action
+        run: git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
