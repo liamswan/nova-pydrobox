@@ -1,11 +1,11 @@
-# Nova-PyDropbox
+# Nova-PyDrobox
 
 [![CI](https://github.com/liamswan/nova-pydrobox/actions/workflows/ci.yml/badge.svg)](https://github.com/liamswan/nova-pydrobox/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/liamswan/nova-pydrobox/graph/badge.svg?token=ESQNIHM4QY)](https://codecov.io/gh/liamswan/nova-pydrobox)  
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)  
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-Nova-PyDropbox is an enhanced Python wrapper around the [Dropbox Python SDK](https://github.com/dropbox/dropbox-sdk-python). It provides secure authentication, comprehensive file operations, progress tracking, and seamless integration with popular data science tools.
+Nova-PyDrobox is an enhanced Python wrapper around the [Dropbox Python SDK](https://github.com/dropbox/dropbox-sdk-python). It provides secure authentication, comprehensive file operations, progress tracking, and seamless integration with popular data science tools.
 
 **Table of Contents**
 - [Features](#features)
@@ -49,7 +49,7 @@ Nova-PyDropbox is an enhanced Python wrapper around the [Dropbox Python SDK](htt
 
 ## Key Differences from Official SDK
 
-Nova-PyDropbox extends the official Dropbox SDK by offering:
+Nova-PyDrobox extends the official Dropbox SDK by offering:
 
 1. **Simplified API**
    - High-level operations abstracting common use cases.
@@ -78,18 +78,18 @@ Nova-PyDropbox extends the official Dropbox SDK by offering:
 
 ## Installation
 
-Since Nova-PyDropbox is not yet published on PyPI, install it directly from GitHub:
+Since Nova-PyDrobox is not yet published on PyPI, install it directly from GitHub:
 
 ### Using pip
 
 ```bash
-pip install git+https://github.com/liamswan/nova-pydropbox.git
+pip install git+https://github.com/liamswan/nova-pydrobox.git
 ```
 
 ### Using Poetry
 
 ```bash
-poetry add git+https://github.com/liamswan/nova-pydropbox.git
+poetry add git+https://github.com/liamswan/nova-pydrobox.git
 ```
 
 ### Development Installation
@@ -98,8 +98,8 @@ For development purposes:
 
 ```bash
 # Clone the repository
-git clone https://github.com/liamswan/nova-pydropbox.git
-cd nova-pydropbox
+git clone https://github.com/liamswan/nova-pydrobox.git
+cd nova-pydrobox
 
 # Install dependencies using Poetry
 poetry install
@@ -138,7 +138,7 @@ print(df_files[['name', 'size', 'modified']])
 
 ## Configuration & Environment Setup
 
-Nova-PyDropbox uses environment variables for authentication. To configure:
+Nova-PyDrobox uses environment variables for authentication. To configure:
 
 1. **Dropbox API Credentials**:  
    Create a `.env` file in your project root with the following content:
@@ -153,15 +153,15 @@ Nova-PyDropbox uses environment variables for authentication. To configure:
 
 ## Architecture
 
-Nova-PyDropbox is organized to ensure modularity and scalability. Here’s an architectural overview:
+Nova-PyDrobox is organized to ensure modularity and scalability. Here’s an architectural overview:
 
 ```mermaid
 %%{init: {'theme': 'base', 'themeVariables': { 'fontSize': '16px' }}}%%
 graph TB
     space1[ ]
-    space1 --- Nova-PyDropbox
+    space1 --- Nova-PyDrobox
 
-    subgraph Nova-PyDropbox["Nova-PyDropbox Application"]
+    subgraph Nova-PyDrobox["Nova-PyDrobox Application"]
         subgraph Project Structure
             direction TB
             A[Project Root]
