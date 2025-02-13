@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 from pathlib import Path
@@ -58,24 +59,42 @@ class TokenStorage:
             logger.error(f"Error handling encryption key: {e}")
             raise
 
+    def _encode_value(self, value: str) -> str:
+        """Encode value to make it compatible with Windows Credential Manager"""
+        try:
+            # Convert to base64 to ensure Windows credential manager compatibility
+            return base64.b64encode(value.encode()).decode()
+        except Exception as e:
+            logger.debug(f"Encoding failed: {e}")
+            return value
+
+    def _decode_value(self, value: str) -> str:
+        """Decode value from Windows Credential Manager format"""
+        try:
+            return base64.b64decode(value.encode()).decode()
+        except Exception as e:
+            logger.debug(f"Decoding failed: {e}")
+            return value
+
     def save_tokens(self, tokens: dict) -> bool:
         """Save tokens using available backend"""
         try:
             if self.use_keyring:
                 for key, value in tokens.items():
-                    keyring.set_password(self.service_name, key, value)
+                    # Encode values before storing
+                    encoded_value = self._encode_value(value)
+                    try:
+                        keyring.set_password(self.service_name, key, encoded_value)
+                    except Exception as e:
+                        logger.error(f"Failed to save {key}: {e}")
+                        return self._fallback_save_tokens(tokens)
             else:
-                from cryptography.fernet import Fernet
-
-                key = self._get_or_create_encryption_key()
-                f = Fernet(key)
-                encrypted_data = f.encrypt(json.dumps(tokens).encode())
-                self._fallback_path().write_bytes(encrypted_data)
+                return self._fallback_save_tokens(tokens)
             logger.info("Tokens saved successfully")
             return True
         except Exception as e:
             logger.error(f"Error saving tokens: {e}")
-            return False
+            return self._fallback_save_tokens(tokens)
 
     def get_tokens(self) -> Optional[dict]:
         """Retrieve tokens from available backend"""
@@ -83,27 +102,58 @@ class TokenStorage:
             if self.use_keyring:
                 tokens = {}
                 for key in ["app_key", "app_secret", "access_token", "refresh_token"]:
-                    value = keyring.get_password(self.service_name, key)
-                    if value:
-                        tokens[key] = value
-                # Ensure all required tokens are present
-                required_keys = ["app_key", "app_secret", "access_token", "refresh_token"]
+                    try:
+                        value = keyring.get_password(self.service_name, key)
+                        if value:
+                            # Decode values after retrieving
+                            tokens[key] = self._decode_value(value)
+                    except Exception as e:
+                        logger.error(f"Failed to retrieve {key}: {e}")
+                        return self._fallback_get_tokens()
+
+                required_keys = [
+                    "app_key",
+                    "app_secret",
+                    "access_token",
+                    "refresh_token",
+                ]
                 if all(key in tokens for key in required_keys):
                     return tokens
-                else:
-                    return None
+                return None
             else:
-                if not self._fallback_path().exists():
-                    return None
-                from cryptography.fernet import Fernet
-
-                key = self._get_or_create_encryption_key()
-                f = Fernet(key)
-                encrypted_data = self._fallback_path().read_bytes()
-                decrypted_data = f.decrypt(encrypted_data)
-                return json.loads(decrypted_data)
+                return self._fallback_get_tokens()
         except Exception as e:
             logger.error(f"Error retrieving tokens: {e}")
+            return self._fallback_get_tokens()
+
+    def _fallback_save_tokens(self, tokens: dict) -> bool:
+        """Fallback to file-based storage"""
+        try:
+            from cryptography.fernet import Fernet
+
+            key = self._get_or_create_encryption_key()
+            f = Fernet(key)
+            encrypted_data = f.encrypt(json.dumps(tokens).encode())
+            self._fallback_path().write_bytes(encrypted_data)
+            return True
+        except Exception as e:
+            logger.error(f"Fallback save failed: {e}")
+            return False
+
+    def _fallback_get_tokens(self) -> Optional[dict]:
+        """Fallback to file-based storage for retrieval"""
+        try:
+            if not self._fallback_path().exists():
+                return None
+            from cryptography.fernet import Fernet
+
+            key = self._get_or_create_encryption_key()
+            f = Fernet(key)
+            encrypted_data = self._fallback_path().read_bytes()
+            decrypted_data = f.decrypt(encrypted_data)
+            return json.loads(decrypted_data)
+        except Exception as e:
+            logger.error(f"Fallback retrieval failed: {e}")
             return None
 
     def clear_tokens(self) -> bool:

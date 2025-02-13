@@ -51,8 +51,11 @@ def test_save_tokens_keyring_success(test_tokens):
         result = storage.save_tokens(test_tokens)
         assert result is True
         assert mock_set.call_count == len(test_tokens)
+
+        # Check that each token is stored with proper encoding
         for key, value in test_tokens.items():
-            mock_set.assert_any_call(storage.service_name, key, value)
+            encoded_value = storage._encode_value(value)
+            mock_set.assert_any_call(storage.service_name, key, encoded_value)
 
 
 def test_save_tokens_keyring_failure(test_tokens):
@@ -60,7 +63,11 @@ def test_save_tokens_keyring_failure(test_tokens):
     storage = TokenStorage()
     storage.use_keyring = True
 
-    with patch("keyring.set_password", side_effect=keyring.errors.PasswordSetError):
+    # Mock both keyring.set_password to fail and _fallback_save_tokens to fail
+    with (
+        patch("keyring.set_password", side_effect=keyring.errors.PasswordSetError),
+        patch.object(storage, "_fallback_save_tokens", return_value=False),
+    ):
         result = storage.save_tokens(test_tokens)
         assert result is False
 
@@ -289,7 +296,77 @@ def test_get_tokens_keyring_partial():
 def test_test_keyring_error():
     """Test error handling in _test_keyring."""
     storage = TokenStorage()
-    
+
     with patch("keyring.set_password", side_effect=RuntimeError("Keyring error")):
         result = storage._test_keyring()
         assert result is False
+
+
+def test_encode_decode_value():
+    """Test the encoding and decoding of values."""
+    storage = TokenStorage()
+    test_value = "test@value!123"
+    encoded = storage._encode_value(test_value)
+    decoded = storage._decode_value(encoded)
+    assert decoded == test_value
+    assert encoded != test_value  # Ensure encoding actually changed the value
+
+
+def test_encode_decode_special_characters():
+    """Test encoding/decoding with special characters."""
+    storage = TokenStorage()
+    special_chars = "!@#$%^&*()_+-=[]{}|;:,.<>?/~`"
+    encoded = storage._encode_value(special_chars)
+    decoded = storage._decode_value(encoded)
+    assert decoded == special_chars
+
+
+def test_encode_value_error_handling():
+    """Test error handling in encode_value."""
+    storage = TokenStorage()
+    with patch("base64.b64encode", side_effect=Exception("Encoding error")):
+        result = storage._encode_value("test")
+        assert result == "test"  # Should return original value on error
+
+
+def test_decode_value_error_handling():
+    """Test error handling in decode_value."""
+    storage = TokenStorage()
+    with patch("base64.b64decode", side_effect=Exception("Decoding error")):
+        result = storage._decode_value("test")
+        assert result == "test"  # Should return original value on error
+
+
+def test_save_tokens_keyring_with_encoding(test_tokens):
+    """Test that tokens are properly encoded when saved to keyring."""
+    storage = TokenStorage()
+    storage.use_keyring = True
+
+    saved_values = {}
+
+    def mock_set_password(service, key, value):
+        saved_values[key] = value
+
+    with patch("keyring.set_password", side_effect=mock_set_password):
+        storage.save_tokens(test_tokens)
+
+        # Verify each value was encoded
+        for key, value in test_tokens.items():
+            encoded_value = storage._encode_value(value)
+            assert saved_values[key] == encoded_value
+            assert saved_values[key] != value  # Ensure encoding happened
+
+
+def test_get_tokens_keyring_with_decoding(test_tokens):
+    """Test that tokens are properly decoded when retrieved from keyring."""
+    storage = TokenStorage()
+    storage.use_keyring = True
+
+    def mock_get_password(service, key):
+        # Return encoded values
+        value = test_tokens.get(key)
+        return storage._encode_value(value) if value else None
+
+    with patch("keyring.get_password", side_effect=mock_get_password):
+        result = storage.get_tokens()
+        assert result == test_tokens  # Should match original tokens after decoding
