@@ -49,18 +49,17 @@ pytest-mock = "^3.14.0"
 requests-mock = "^1.12.1"
 
 [tool.coverage.run]
-source = ["nova_pydrobox"]
 branch = true
+source = ["nova_pydrobox"]
 
 [tool.coverage.report]
+show_missing = true
 exclude_lines = [
     "pragma: no cover",
     "def __repr__",
-    "if self.debug:",
     "raise NotImplementedError",
     "if __name__ == .__main__.:",
     "pass",
-    "raise ImportError",
 ]
 ignore_errors = true
 omit = [

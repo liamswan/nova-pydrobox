@@ -176,3 +176,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 tests/auth/__pycache__/test_authenticator.cpython-313-pytest-8.3.4.pyc
+.coveragerc
