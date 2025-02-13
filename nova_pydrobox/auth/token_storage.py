@@ -16,10 +16,15 @@ logger = logging.getLogger(__name__)
 
 
 class TokenStorage:
-    def __init__(self, service_name: str = "nova-pydrobox"):
+    def __init__(self, service_name: str = "nova-pydrobox", force_fernet: bool = None):
         self.service_name = service_name
-        # Force Fernet encryption on Windows
-        self.use_keyring = platform.system() != "Windows" and self._test_keyring()
+        # Allow force_fernet to override platform check for testing
+        if force_fernet is not None:
+            self.use_keyring = not force_fernet
+        else:
+            # Default behavior: Force Fernet encryption on Windows
+            self.use_keyring = platform.system() != "Windows" and self._test_keyring()
+
         logger.info(
             f"Using {'keyring' if self.use_keyring else 'Fernet encryption'} backend for token storage"
         )

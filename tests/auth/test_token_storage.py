@@ -46,7 +46,7 @@ def mock_config_dir(mocker):
 def test_init_with_working_keyring(mocker):
     """Test TokenStorage initialization with working keyring."""
     mocker.patch.object(TokenStorage, "_test_keyring", return_value=True)
-    storage = TokenStorage()
+    storage = TokenStorage(force_fernet=False)  # Force keyring usage
     assert storage.use_keyring is True
 
 
@@ -59,9 +59,7 @@ def test_init_with_broken_keyring(mocker):
 
 def test_save_tokens_keyring_success(test_tokens, mocker):
     """Test saving tokens using keyring backend."""
-    storage = TokenStorage()
-    storage.use_keyring = True
-
+    storage = TokenStorage(force_fernet=False)  # Force keyring usage
     mock_set = mocker.patch("keyring.set_password")
     result = storage.save_tokens(test_tokens)
     assert result is True
