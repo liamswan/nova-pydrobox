@@ -60,6 +60,8 @@ def test_init_with_broken_keyring(mocker):
 def test_save_tokens_keyring_success(test_tokens, mocker):
     """Test saving tokens using keyring backend."""
     storage = TokenStorage(force_fernet=False)  # Force keyring usage
+    storage.use_keyring = True  # Ensure keyring is used
+
     mock_set = mocker.patch("keyring.set_password")
     result = storage.save_tokens(test_tokens)
     assert result is True
@@ -128,8 +130,8 @@ def test_get_tokens_keyring_success(test_tokens, mocker):
 
 def test_get_tokens_keyring_empty(mocker):
     """Test retrieving tokens using keyring backend when no tokens exist."""
-    storage = TokenStorage()
-    storage.use_keyring = True
+    storage = TokenStorage(force_fernet=False)  # Force keyring usage
+    storage.use_keyring = True  # Ensure keyring is used
 
     mocker.patch("keyring.get_password", return_value=None)
     result = storage.get_tokens()
@@ -340,8 +342,8 @@ def test_get_tokens_file_decrypt_error(mock_config_dir, mocker):
 
 def test_get_tokens_keyring_partial(mocker):
     """Test get_tokens with keyring when not all required tokens are present."""
-    storage = TokenStorage()
-    storage.use_keyring = True
+    storage = TokenStorage(force_fernet=False)  # Force keyring usage
+    storage.use_keyring = True  # Ensure keyring is used
 
     def mock_get_password(service, key):
         # Only return some of the required tokens
@@ -403,8 +405,8 @@ def test_decode_value_error_handling(mocker):
 
 def test_save_tokens_keyring_with_encoding(test_tokens, mocker):
     """Test that tokens are properly encoded when saved to keyring."""
-    storage = TokenStorage()
-    storage.use_keyring = True
+    storage = TokenStorage(force_fernet=False)  # Force keyring usage
+    storage.use_keyring = True  # Ensure keyring is used
 
     saved_values = {}
 
@@ -574,12 +576,10 @@ def test_save_tokens_general_exception(test_tokens, mocker):
 
 def test_get_tokens_general_exception(mocker):
     """Test error handling in get_tokens for general exceptions."""
-    storage = TokenStorage()
-    storage.use_keyring = True
+    storage = TokenStorage(force_fernet=False)  # Force keyring usage
+    storage.use_keyring = True  # Ensure keyring is used
 
-    # Mock keyring to raise a general exception
     mocker.patch("keyring.get_password", side_effect=Exception("Unexpected error"))
-
     result = storage.get_tokens()
     assert result is None
 

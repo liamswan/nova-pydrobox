@@ -85,11 +85,11 @@ class TokenStorage:
     def save_tokens(self, tokens: dict) -> bool:
         """Save tokens using available backend"""
         try:
-            # Always use Fernet on Windows
-            if platform.system() == "Windows" or not self.use_keyring:
+            # Use Fernet if forced or on Windows
+            if not self.use_keyring:
                 return self._fernet_save_tokens(tokens)
 
-            # Use keyring on other platforms if available
+            # Use keyring if available
             for key, value in tokens.items():
                 try:
                     encoded_value = self._encode_value(value)
@@ -107,11 +107,11 @@ class TokenStorage:
     def get_tokens(self) -> Optional[dict]:
         """Retrieve tokens from available backend"""
         try:
-            # Always use Fernet on Windows
-            if platform.system() == "Windows" or not self.use_keyring:
+            # Use Fernet if forced or on Windows
+            if not self.use_keyring:
                 return self._fernet_get_tokens()
 
-            # Use keyring on other platforms if available
+            # Use keyring if available
             tokens = {}
             for key in ["app_key", "app_secret", "access_token", "refresh_token"]:
                 encoded_value = keyring.get_password(self.service_name, key)
