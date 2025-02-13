@@ -1,10 +1,12 @@
 import base64
 import json
 import logging
+import platform
 from pathlib import Path
 from typing import Optional
 
 import keyring
+from cryptography.fernet import Fernet, InvalidToken
 
 # Set up logging
 logging.basicConfig(
@@ -14,11 +16,12 @@ logger = logging.getLogger(__name__)
 
 
 class TokenStorage:
-    def __init__(self, service_name: str = "nova-pydropbox"):
+    def __init__(self, service_name: str = "nova-pydrobox"):
         self.service_name = service_name
-        self.use_keyring = self._test_keyring()
+        # Force Fernet encryption on Windows
+        self.use_keyring = platform.system() != "Windows" and self._test_keyring()
         logger.info(
-            f"Using {'keyring' if self.use_keyring else 'encrypted file'} backend for token storage"
+            f"Using {'keyring' if self.use_keyring else 'Fernet encryption'} backend for token storage"
         )
 
     def _test_keyring(self) -> bool:
@@ -35,12 +38,11 @@ class TokenStorage:
     def _get_config_dir(self) -> Path:
         """Get configuration directory path"""
         config_dir = Path.home() / ".config" / "nova-pydropbox"
-        config_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            config_dir.mkdir(parents=True, exist_ok=True)
+        except OSError as e:
+            logger.warning(f"Could not create config directory: {e}")
         return config_dir
-
-    def _fallback_path(self) -> Path:
-        """Get path for fallback encrypted file storage"""
-        return self._get_config_dir() / ".tokens.encrypted"
 
     def _get_or_create_encryption_key(self) -> bytes:
         """Get or create encryption key for fallback storage"""
@@ -49,8 +51,8 @@ class TokenStorage:
             if key_path.exists():
                 return key_path.read_bytes()
             else:
-                from cryptography.fernet import Fernet
-
+                # Create config directory if it doesn't exist
+                key_path.parent.mkdir(parents=True, exist_ok=True)
                 key = Fernet.generate_key()
                 key_path.write_bytes(key)
                 key_path.chmod(0o600)  # Secure file permissions
@@ -60,101 +62,142 @@ class TokenStorage:
             raise
 
     def _encode_value(self, value: str) -> str:
-        """Encode value to make it compatible with Windows Credential Manager"""
+        """Encode a string value using base64."""
         try:
-            # Convert to base64 to ensure Windows credential manager compatibility
             return base64.b64encode(value.encode()).decode()
         except Exception as e:
-            logger.debug(f"Encoding failed: {e}")
+            logger.error(f"Error encoding value: {e}")
             return value
 
     def _decode_value(self, value: str) -> str:
-        """Decode value from Windows Credential Manager format"""
+        """Decode a base64 encoded string."""
         try:
             return base64.b64decode(value.encode()).decode()
         except Exception as e:
-            logger.debug(f"Decoding failed: {e}")
+            logger.error(f"Error decoding value: {e}")
             return value
 
     def save_tokens(self, tokens: dict) -> bool:
         """Save tokens using available backend"""
         try:
-            if self.use_keyring:
-                for key, value in tokens.items():
-                    # Encode values before storing
+            # Always use Fernet on Windows
+            if platform.system() == "Windows" or not self.use_keyring:
+                return self._fernet_save_tokens(tokens)
+
+            # Use keyring on other platforms if available
+            for key, value in tokens.items():
+                try:
                     encoded_value = self._encode_value(value)
-                    try:
-                        keyring.set_password(self.service_name, key, encoded_value)
-                    except Exception as e:
-                        logger.error(f"Failed to save {key}: {e}")
-                        return self._fallback_save_tokens(tokens)
-            else:
-                return self._fallback_save_tokens(tokens)
-            logger.info("Tokens saved successfully")
+                    keyring.set_password(self.service_name, key, encoded_value)
+                except Exception as e:
+                    logger.error(f"Failed to save {key}: {e}")
+                    return self._fernet_save_tokens(tokens)
+
+            logger.info("Tokens saved successfully using keyring")
             return True
         except Exception as e:
             logger.error(f"Error saving tokens: {e}")
-            return self._fallback_save_tokens(tokens)
+            return False
 
     def get_tokens(self) -> Optional[dict]:
         """Retrieve tokens from available backend"""
         try:
-            if self.use_keyring:
-                tokens = {}
-                for key in ["app_key", "app_secret", "access_token", "refresh_token"]:
-                    try:
-                        value = keyring.get_password(self.service_name, key)
-                        if value:
-                            # Decode values after retrieving
-                            tokens[key] = self._decode_value(value)
-                    except Exception as e:
-                        logger.error(f"Failed to retrieve {key}: {e}")
-                        return self._fallback_get_tokens()
+            # Always use Fernet on Windows
+            if platform.system() == "Windows" or not self.use_keyring:
+                return self._fernet_get_tokens()
 
-                required_keys = [
+            # Use keyring on other platforms if available
+            tokens = {}
+            for key in ["app_key", "app_secret", "access_token", "refresh_token"]:
+                encoded_value = keyring.get_password(self.service_name, key)
+                if encoded_value:
+                    tokens[key] = self._decode_value(encoded_value)
+
+            if all(
+                key in tokens
+                for key in ["app_key", "app_secret", "access_token", "refresh_token"]
+            ):
+                return tokens
+            return None
+        except Exception as e:
+            logger.error(f"Error retrieving tokens: {e}")
+            return None
+
+    def _fernet_save_tokens(self, tokens: dict) -> bool:
+        """Save tokens using Fernet encryption"""
+        try:
+            key = self._get_or_create_encryption_key()
+            f = Fernet(key)
+            token_data = json.dumps(tokens).encode()
+            encrypted_data = f.encrypt(token_data)
+            token_path = self._get_token_path()
+            token_path.parent.mkdir(parents=True, exist_ok=True)
+            token_path.write_bytes(encrypted_data)
+            token_path.chmod(0o600)  # Secure file permissions
+            logger.info("Tokens saved successfully using Fernet encryption")
+            return True
+        except Exception as e:
+            logger.error(f"Fernet save failed: {e}")
+            return False
+
+    def _fernet_get_tokens(self) -> Optional[dict]:
+        """Retrieve tokens using Fernet encryption"""
+        try:
+            logger.debug("Starting _fernet_get_tokens")
+            token_path = self._get_token_path()
+            logger.debug(f"Token path: {token_path}")
+
+            if not token_path.exists():
+                logger.debug("Token file does not exist")
+                return None
+
+            key = self._get_or_create_encryption_key()
+            logger.debug(f"Got encryption key: {key[:10]}...")
+
+            f = Fernet(key)
+            logger.debug("Created Fernet instance")
+
+            encrypted_data = token_path.read_bytes()
+            logger.debug(f"Read encrypted data: {encrypted_data[:20]}...")
+
+            try:
+                logger.debug("Attempting to decrypt data")
+                decrypted_data = f.decrypt(encrypted_data)
+                logger.debug(f"Decrypted data: {decrypted_data[:50]}...")
+
+                tokens = json.loads(decrypted_data.decode("utf-8"))
+                logger.debug(f"Parsed tokens: {tokens}")
+
+                required_keys = {
                     "app_key",
                     "app_secret",
                     "access_token",
                     "refresh_token",
-                ]
-                if all(key in tokens for key in required_keys):
-                    return tokens
+                }
+                logger.debug(f"Checking required keys: {required_keys}")
+
+                if not all(key in tokens for key in required_keys):
+                    logger.error("Missing required tokens in decrypted data")
+                    return None
+
+                logger.debug("Tokens retrieved successfully")
+                return tokens
+
+            except InvalidToken:
+                logger.error("Failed to decrypt token data - invalid token")
                 return None
-            else:
-                return self._fallback_get_tokens()
-        except Exception as e:
-            logger.error(f"Error retrieving tokens: {e}")
-            return self._fallback_get_tokens()
-
-    def _fallback_save_tokens(self, tokens: dict) -> bool:
-        """Fallback to file-based storage"""
-        try:
-            from cryptography.fernet import Fernet
-
-            key = self._get_or_create_encryption_key()
-            f = Fernet(key)
-            encrypted_data = f.encrypt(json.dumps(tokens).encode())
-            self._fallback_path().write_bytes(encrypted_data)
-            return True
-        except Exception as e:
-            logger.error(f"Fallback save failed: {e}")
-            return False
-
-    def _fallback_get_tokens(self) -> Optional[dict]:
-        """Fallback to file-based storage for retrieval"""
-        try:
-            if not self._fallback_path().exists():
+            except json.JSONDecodeError:
+                logger.error("Failed to parse decrypted token data")
                 return None
-            from cryptography.fernet import Fernet
 
-            key = self._get_or_create_encryption_key()
-            f = Fernet(key)
-            encrypted_data = self._fallback_path().read_bytes()
-            decrypted_data = f.decrypt(encrypted_data)
-            return json.loads(decrypted_data)
         except Exception as e:
-            logger.error(f"Fallback retrieval failed: {e}")
+            logger.error(f"Fernet retrieval failed: {str(e)}")
+            logger.exception("Full traceback:")  # This will log the full traceback
             return None
+
+    def _get_token_path(self) -> Path:
+        """Get path for encrypted token storage"""
+        return self._get_config_dir() / ".tokens.encrypted"
 
     def clear_tokens(self) -> bool:
         """Clear all stored tokens"""
@@ -166,8 +209,13 @@ class TokenStorage:
                     except keyring.errors.PasswordDeleteError:
                         pass
             else:
-                if self._fallback_path().exists():
-                    self._fallback_path().unlink()
+                token_path = self._get_token_path()
+                if token_path.exists():
+                    try:
+                        token_path.unlink()
+                    except OSError as e:
+                        logger.error(f"Failed to delete token file: {e}")
+                        return False
             logger.info("Tokens cleared successfully")
             return True
         except Exception as e:
