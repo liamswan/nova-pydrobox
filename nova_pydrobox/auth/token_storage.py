@@ -16,6 +16,22 @@ logger = logging.getLogger(__name__)
 
 
 class TokenStorage:
+    """
+    A class to handle secure storage of Dropbox API tokens.
+
+    This class provides two storage backends:
+    1. System keyring (default on non-Windows systems)
+    2. File-based storage with Fernet encryption (default on Windows)
+
+    Attributes:
+        service_name (str): Name of the service for keyring storage
+        use_keyring (bool): Whether to use keyring backend or Fernet encryption
+
+    Args:
+        service_name (str, optional): Service name for keyring storage. Defaults to "nova-pydrobox".
+        force_fernet (bool, optional): Force use of Fernet encryption instead of keyring. Defaults to None.
+    """
+
     def __init__(self, service_name: str = "nova-pydrobox", force_fernet: bool = None):
         self.service_name = service_name
         # Allow force_fernet to override platform check for testing
@@ -30,7 +46,12 @@ class TokenStorage:
         )
 
     def _test_keyring(self) -> bool:
-        """Test if keyring is working"""
+        """
+        Test if the system keyring is working correctly.
+
+        Returns:
+            bool: True if keyring is working, False otherwise
+        """
         try:
             keyring.set_password(self.service_name, "test", "test")
             test_value = keyring.get_password(self.service_name, "test")
@@ -41,7 +62,15 @@ class TokenStorage:
             return False
 
     def _get_config_dir(self) -> Path:
-        """Get configuration directory path"""
+        """
+        Get or create the configuration directory path.
+
+        Returns:
+            Path: Path to the configuration directory
+
+        Note:
+            Creates directory if it doesn't exist
+        """
         config_dir = Path.home() / ".config" / "nova-pydropbox"
         try:
             config_dir.mkdir(parents=True, exist_ok=True)
@@ -50,7 +79,15 @@ class TokenStorage:
         return config_dir
 
     def _get_or_create_encryption_key(self) -> bytes:
-        """Get or create encryption key for fallback storage"""
+        """
+        Get existing or create new encryption key for Fernet.
+
+        Returns:
+            bytes: The encryption key
+
+        Raises:
+            Exception: If key creation or retrieval fails
+        """
         key_path = self._get_config_dir() / ".key"
         try:
             if key_path.exists():
@@ -67,7 +104,18 @@ class TokenStorage:
             raise
 
     def _encode_value(self, value: str) -> str:
-        """Encode a string value using base64."""
+        """
+        Encode a string value using base64.
+
+        Args:
+            value (str): String to encode
+
+        Returns:
+            str: Base64 encoded string
+
+        Note:
+            Falls back to original value if encoding fails
+        """
         try:
             return base64.b64encode(value.encode()).decode()
         except Exception as e:
@@ -75,7 +123,18 @@ class TokenStorage:
             return value
 
     def _decode_value(self, value: str) -> str:
-        """Decode a base64 encoded string."""
+        """
+        Decode a base64 encoded string.
+
+        Args:
+            value (str): Base64 encoded string to decode
+
+        Returns:
+            str: Decoded string
+
+        Note:
+            Falls back to original value if decoding fails
+        """
         try:
             return base64.b64decode(value.encode()).decode()
         except Exception as e:
@@ -83,7 +142,18 @@ class TokenStorage:
             return value
 
     def save_tokens(self, tokens: dict) -> bool:
-        """Save tokens using available backend"""
+        """
+        Save tokens using the configured storage backend.
+
+        Args:
+            tokens (dict): Dictionary containing token key-value pairs
+
+        Returns:
+            bool: True if save successful, False otherwise
+
+        Note:
+            Falls back to Fernet encryption if keyring save fails
+        """
         try:
             # Use Fernet if forced or on Windows
             if not self.use_keyring:
@@ -105,7 +175,18 @@ class TokenStorage:
             return False
 
     def get_tokens(self) -> Optional[dict]:
-        """Retrieve tokens from available backend"""
+        """
+        Retrieve tokens from the configured storage backend.
+
+        Returns:
+            Optional[dict]: Dictionary containing tokens if successful, None otherwise
+
+        Required token keys:
+            - app_key
+            - app_secret
+            - access_token
+            - refresh_token
+        """
         try:
             # Use Fernet if forced or on Windows
             if not self.use_keyring:
@@ -129,7 +210,18 @@ class TokenStorage:
             return None
 
     def _fernet_save_tokens(self, tokens: dict) -> bool:
-        """Save tokens using Fernet encryption"""
+        """
+        Save tokens using Fernet encryption to a file.
+
+        Args:
+            tokens (dict): Dictionary containing token key-value pairs
+
+        Returns:
+            bool: True if save successful, False otherwise
+
+        Note:
+            Encrypts tokens and saves to .tokens.encrypted file
+        """
         try:
             key = self._get_or_create_encryption_key()
             f = Fernet(key)
@@ -146,7 +238,15 @@ class TokenStorage:
             return False
 
     def _fernet_get_tokens(self) -> Optional[dict]:
-        """Retrieve tokens using Fernet encryption"""
+        """
+        Retrieve tokens using Fernet decryption from file.
+
+        Returns:
+            Optional[dict]: Dictionary containing tokens if successful, None otherwise
+
+        Note:
+            Validates presence of all required token keys after decryption
+        """
         try:
             logger.debug("Starting _fernet_get_tokens")
             token_path = self._get_token_path()
@@ -201,11 +301,24 @@ class TokenStorage:
             return None
 
     def _get_token_path(self) -> Path:
-        """Get path for encrypted token storage"""
+        """
+        Get path for encrypted token storage file.
+
+        Returns:
+            Path: Path to the encrypted tokens file
+        """
         return self._get_config_dir() / ".tokens.encrypted"
 
     def clear_tokens(self) -> bool:
-        """Clear all stored tokens"""
+        """
+        Clear all stored tokens from the active backend.
+
+        Returns:
+            bool: True if clearing successful, False otherwise
+
+        Note:
+            Handles both keyring and file-based storage
+        """
         try:
             if self.use_keyring:
                 for key in ["app_key", "app_secret", "access_token", "refresh_token"]:

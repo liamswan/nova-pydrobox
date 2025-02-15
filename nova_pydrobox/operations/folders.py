@@ -12,16 +12,43 @@ logger = logging.getLogger(__name__)
 
 
 class FolderOperations(BaseOperations):
-    """Class for handling Dropbox folder operations."""
+    """
+    Class for handling Dropbox folder operations.
+
+    Provides functionality for:
+    - Folder creation and management
+    - Size calculations
+    - Structure analysis
+    - Metadata retrieval
+    - Empty folder detection
+
+    Inherits from:
+        BaseOperations: Core Dropbox operations functionality
+    """
 
     def create_folder(self, path: str) -> pd.DataFrame:
-        """Create a new folder at the specified path.
+        """
+        Create a new folder at the specified path.
 
         Args:
-            path: The Dropbox path where the folder should be created.
+            path (str): The Dropbox path where the folder should be created
 
         Returns:
-            DataFrame containing the metadata of the created folder.
+            pd.DataFrame: DataFrame containing the metadata of the created folder
+
+        Raises:
+            dropbox.exceptions.ApiError: If folder creation fails
+
+        Note:
+            - Handles cases where folder already exists
+            - Returns metadata even if folder pre-exists
+
+        Example:
+            ```python
+            # Create a new folder
+            result = ops.create_folder("/Documents/NewFolder")
+            print(result["path"].iloc[0])  # Show created folder path
+            ```
         """
         try:
             response = self.dbx.files_create_folder_v2(path)
@@ -41,13 +68,28 @@ class FolderOperations(BaseOperations):
             raise
 
     def get_folder_size(self, path: str = "") -> int:
-        """Calculate the total size of a folder.
+        """
+        Calculate the total size of a folder.
 
         Args:
-            path: The Dropbox path of the folder.
+            path (str, optional): The Dropbox path of the folder. Defaults to root.
 
         Returns:
-            Total size of the folder in bytes.
+            int: Total size of the folder in bytes
+
+        Raises:
+            dropbox.exceptions.ApiError: If size calculation fails
+
+        Note:
+            - Recursively calculates size of all contents
+            - Includes all nested files and folders
+
+        Example:
+            ```python
+            # Get size of Documents folder
+            size = ops.get_folder_size("/Documents")
+            print(f"Size: {size / (1024*1024):.2f} MB")
+            ```
         """
         try:
             folder_contents = self.list_files(path)
@@ -57,13 +99,36 @@ class FolderOperations(BaseOperations):
             raise
 
     def get_folder_structure(self, path: str = "") -> pd.DataFrame:
-        """Get the complete folder structure starting from the specified path.
+        """
+        Get the complete folder structure starting from the specified path.
 
         Args:
-            path: The Dropbox path to start from.
+            path (str, optional): The Dropbox path to start from. Defaults to root.
 
         Returns:
-            DataFrame containing the folder structure with paths and metadata.
+            pd.DataFrame: DataFrame containing the folder structure with columns:
+                - name: File/folder name
+                - path: Full Dropbox path
+                - type: 'file' or 'folder'
+                - size: Size in bytes
+                - modified: Last modification time
+                - hash: Content hash (files only)
+
+        Raises:
+            dropbox.exceptions.ApiError: If structure retrieval fails
+
+        Note:
+            - Returns recursive listing of all contents
+            - Includes files and folders at all levels
+            - Preserves folder hierarchy
+
+        Example:
+            ```python
+            # Get complete structure of Photos folder
+            structure = ops.get_folder_structure("/Photos")
+            # Show all folders
+            folders = structure[structure["type"] == "folder"]
+            ```
         """
         try:
             return self.list_files(path, filter_criteria=FileFilter(recursive=True))
@@ -72,13 +137,28 @@ class FolderOperations(BaseOperations):
             raise
 
     def is_empty(self, path: str) -> bool:
-        """Check if a folder is empty.
+        """
+        Check if a folder is empty.
 
         Args:
-            path: The Dropbox path of the folder.
+            path (str): The Dropbox path of the folder
 
         Returns:
-            True if the folder is empty, False otherwise.
+            bool: True if the folder is empty, False otherwise
+
+        Raises:
+            dropbox.exceptions.ApiError: If check fails
+
+        Note:
+            - Considers both files and subfolders
+            - Hidden files are included in check
+
+        Example:
+            ```python
+            # Check if Downloads folder is empty
+            if ops.is_empty("/Downloads"):
+                print("Downloads folder is empty")
+            ```
         """
         try:
             folder_contents = self.list_files(path)
@@ -88,13 +168,34 @@ class FolderOperations(BaseOperations):
             raise
 
     def get_folder_metadata(self, path: str) -> pd.DataFrame:
-        """Get metadata for a specific folder.
+        """
+        Get metadata for a specific folder.
 
         Args:
-            path: The Dropbox path of the folder.
+            path (str): The Dropbox path of the folder
 
         Returns:
-            DataFrame containing the folder's metadata.
+            pd.DataFrame: DataFrame containing the folder's metadata with columns:
+                - name: Folder name
+                - path: Full Dropbox path
+                - type: Always 'folder'
+                - size: 0 (folders have no size)
+                - modified: Last modification time
+
+        Raises:
+            dropbox.exceptions.ApiError: If metadata retrieval fails
+            ValueError: If path points to a file instead of folder
+
+        Note:
+            - Validates that path points to a folder
+            - Returns standardized metadata format
+
+        Example:
+            ```python
+            # Get metadata for Documents folder
+            metadata = ops.get_folder_metadata("/Documents")
+            print(f"Last modified: {metadata['modified'].iloc[0]}")
+            ```
         """
         try:
             metadata = self.dbx.files_get_metadata(path)

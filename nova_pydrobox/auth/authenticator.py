@@ -2,6 +2,7 @@ import logging
 import webbrowser
 
 import dropbox
+from typing import Optional
 
 from nova_pydrobox.auth.token_storage import TokenStorage
 
@@ -12,10 +13,38 @@ logger = logging.getLogger(__name__)
 
 
 class Authenticator:
+    """
+    Handles Dropbox authentication and client creation.
+
+    This class manages the OAuth2 authentication flow for Dropbox, including:
+    - Initial setup of app credentials
+    - OAuth2 authorization flow
+    - Token storage and retrieval
+    - Client creation with automatic token refresh
+
+    Attributes:
+        storage (TokenStorage): Instance of TokenStorage for secure token management
+    """
+
     def __init__(self):
+        """Initialize authenticator with token storage."""
         self.storage = TokenStorage()
 
     def setup_credentials(self):
+        """
+        Guide user through setting up Dropbox API credentials.
+
+        This method:
+        1. Opens the Dropbox App Console in the default browser
+        2. Guides the user through app creation
+        3. Collects app key and secret
+
+        Returns:
+            tuple[str, str]: A tuple containing (app_key, app_secret)
+
+        Note:
+            Interactive process that requires user input
+        """
         print("\n=== Dropbox API Credentials Setup Guide ===")
         print("\n1. I'll open the Dropbox App Console in your browser.")
         print("2. If you're not logged in, please log in to your Dropbox account.")
@@ -42,7 +71,22 @@ class Authenticator:
 
         return app_key, app_secret
 
-    def authenticate_dropbox(self, force_reauth=False):
+    def authenticate_dropbox(self, force_reauth: bool = False) -> bool:
+        """
+        Perform OAuth2 authentication with Dropbox.
+
+        Args:
+            force_reauth (bool, optional): Force re-authentication even if tokens exist.
+                                         Defaults to False.
+
+        Returns:
+            bool: True if authentication successful, False otherwise
+
+        Note:
+            - Uses PKCE flow for enhanced security
+            - Stores tokens using TokenStorage
+            - Includes retry logic for token storage
+        """
         if not force_reauth:
             existing_tokens = self.storage.get_tokens()
             if existing_tokens:
@@ -98,6 +142,17 @@ class Authenticator:
             return False
 
     def get_dropbox_client(self):
+        """
+        Create an authenticated Dropbox client.
+
+        Returns:
+            Optional[dropbox.Dropbox]: Authenticated Dropbox client or None if failed
+
+        Note:
+            - Automatically handles token refresh
+            - Validates connection by checking account access
+            - Returns None if authentication fails
+        """
         credentials = self.storage.get_tokens()
         if not credentials:
             logger.error("No credentials found")
@@ -121,19 +176,74 @@ class Authenticator:
 
 
 # Top-level aliases to support module-level imports
-def authenticate_dropbox(*args, **kwargs):
+def authenticate_dropbox(*args, **kwargs) -> bool:
+    """
+    Module-level function to authenticate with Dropbox.
+
+    Args:
+        *args: Variable length argument list
+        **kwargs: Arbitrary keyword arguments
+
+    Returns:
+        bool: True if authentication successful, False otherwise
+
+    Example:
+        ```python
+        success = authenticate_dropbox(force_reauth=True)
+        ```
+    """
     return Authenticator().authenticate_dropbox(*args, **kwargs)
 
 
-def get_dropbox_client(*args, **kwargs):
+def get_dropbox_client(*args, **kwargs) -> Optional[dropbox.Dropbox]:
+    """
+    Module-level function to get an authenticated Dropbox client.
+
+    Args:
+        *args: Variable length argument list
+        **kwargs: Arbitrary keyword arguments
+
+    Returns:
+        Optional[dropbox.Dropbox]: Authenticated client or None if failed
+
+    Example:
+        ```python
+        dbx = get_dropbox_client()
+        if dbx:
+            account = dbx.users_get_current_account()
+        ```
+    """
     return Authenticator().get_dropbox_client(*args, **kwargs)
 
 
-def setup_credentials(*args, **kwargs):
+def setup_credentials(*args, **kwargs) -> tuple[str, str]:
+    """
+    Module-level function to set up Dropbox credentials.
+
+    Args:
+        *args: Variable length argument list
+        **kwargs: Arbitrary keyword arguments
+
+    Returns:
+        tuple[str, str]: A tuple containing (app_key, app_secret)
+
+    Example:
+        ```python
+        app_key, app_secret = setup_credentials()
+        ```
+    """
     return Authenticator().setup_credentials(*args, **kwargs)
 
 
 def main():
+    """
+    Command-line interface for authentication setup.
+
+    Provides interactive flow for:
+    - Checking existing credentials
+    - Option to re-authenticate
+    - Guiding through authentication process
+    """
     print("Welcome to Nova-PyDropbox Authentication Setup!")
     auth = Authenticator()
     storage = auth.storage

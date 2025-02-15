@@ -16,10 +16,35 @@ logger = logging.getLogger(__name__)
 
 
 class FileOperations(BaseOperations):
-    """Class for handling Dropbox file operations."""
+    """
+    Class for handling Dropbox file operations.
+
+    Provides functionality for:
+    - File uploads (small and large files)
+    - File downloads (small and large files)
+    - Progress tracking
+    - Chunked transfer handling
+    - Directory synchronization
+
+    Inherits from:
+        BaseOperations: Core Dropbox operations functionality
+    """
 
     def _read_file_chunks(self, local_path: str, file_size: int) -> bytes:
-        """Read file in chunks for efficient memory usage."""
+        """
+        Read file in chunks for efficient memory usage.
+
+        Args:
+            local_path (str): Path to local file
+            file_size (int): Size of file in bytes
+
+        Returns:
+            bytes: Concatenated file chunks
+
+        Note:
+            - Uses tqdm for progress visualization
+            - Reads in chunks of CHUNK_SIZE (4MB)
+        """
         chunks = []
         bytes_read = 0
         with open(local_path, "rb") as f:
@@ -41,7 +66,21 @@ class FileOperations(BaseOperations):
     def _upload_small_file(
         self, content: bytes, dropbox_path: str, mode: WriteMode, local_path: str
     ) -> FileMetadata:
-        """Upload a small file (≤ 150MB) to Dropbox."""
+        """
+        Upload a small file (≤ 150MB) to Dropbox.
+
+        Args:
+            content (bytes): File content
+            dropbox_path (str): Destination path in Dropbox
+            mode (WriteMode): Upload mode (add/overwrite)
+            local_path (str): Source file path
+
+        Returns:
+            FileMetadata: Metadata of uploaded file
+
+        Note:
+            Calculates SHA256 hash for content verification
+        """
         hasher = hashlib.sha256()
         hasher.update(content)
         content_hash = hasher.hexdigest()
@@ -56,7 +95,22 @@ class FileOperations(BaseOperations):
     def _upload_large_file(
         self, local_path: str, dropbox_path: str, mode: WriteMode
     ) -> FileMetadata:
-        """Upload a large file (>150MB) to Dropbox using upload sessions."""
+        """
+        Upload a large file (>150MB) to Dropbox using upload sessions.
+
+        Args:
+            local_path (str): Source file path
+            dropbox_path (str): Destination path in Dropbox
+            mode (WriteMode): Upload mode (add/overwrite)
+
+        Returns:
+            FileMetadata: Metadata of uploaded file
+
+        Note:
+            - Uses upload sessions for files >150MB
+            - Shows progress with tqdm
+            - Handles chunked uploads automatically
+        """
         file_size = Path(local_path).stat().st_size
         with open(local_path, "rb") as f:
             with tqdm(
@@ -92,7 +146,20 @@ class FileOperations(BaseOperations):
     def _upload_file(
         self, local_path: str, dropbox_path: str, mode: WriteMode
     ) -> FileMetadata:
-        """Upload a file to Dropbox, choosing the appropriate method based on size."""
+        """
+        Upload a file to Dropbox, choosing the appropriate method based on size.
+
+        Args:
+            local_path (str): Source file path
+            dropbox_path (str): Destination path in Dropbox
+            mode (WriteMode): Upload mode (add/overwrite)
+
+        Returns:
+            FileMetadata: Metadata of uploaded file
+
+        Note:
+            Automatically selects between small and large file upload methods
+        """
         file_size = Path(local_path).stat().st_size
         if file_size <= 150 * 1024 * 1024:  # 150MB
             content = self._read_file_chunks(local_path, file_size)
@@ -103,7 +170,29 @@ class FileOperations(BaseOperations):
     def upload(
         self, local_path: str, dropbox_path: str, overwrite: bool = False
     ) -> pd.DataFrame:
-        """Upload a file or directory to Dropbox."""
+        """
+        Upload a file or directory to Dropbox.
+
+        Args:
+            local_path (str): Path to local file or directory
+            dropbox_path (str): Destination path in Dropbox
+            overwrite (bool, optional): Whether to overwrite existing files. Defaults to False.
+
+        Returns:
+            pd.DataFrame: DataFrame containing metadata of uploaded files
+
+        Raises:
+            Exception: If upload fails
+
+        Example:
+            ```python
+            # Upload single file
+            result = ops.upload("local/path/file.txt", "/dropbox/path/file.txt")
+
+            # Upload directory with overwrite
+            result = ops.upload("local/folder", "/dropbox/folder", overwrite=True)
+            ```
+        """
         try:
             mode = WriteMode.overwrite if overwrite else WriteMode.add
             path = Path(local_path)
@@ -126,7 +215,21 @@ class FileOperations(BaseOperations):
             raise
 
     def _download_file(self, dropbox_path: str, local_path: str) -> FileMetadata:
-        """Download a file from Dropbox."""
+        """
+        Download a file from Dropbox.
+
+        Args:
+            dropbox_path (str): Source path in Dropbox
+            local_path (str): Destination path on local system
+
+        Returns:
+            FileMetadata: Metadata of downloaded file
+
+        Note:
+            - Creates parent directories if needed
+            - Shows download progress
+            - Automatically handles large files
+        """
         try:
             Path(local_path).parent.mkdir(parents=True, exist_ok=True)
             metadata = self.dbx.files_get_metadata(dropbox_path)
@@ -153,7 +256,21 @@ class FileOperations(BaseOperations):
             raise
 
     def _download_large_file(self, dropbox_path: str, local_path: str) -> FileMetadata:
-        """Download a large file (>150MB) from Dropbox using download sessions."""
+        """
+        Download a large file (>150MB) from Dropbox using download sessions.
+
+        Args:
+            dropbox_path (str): Source path in Dropbox
+            local_path (str): Destination path on local system
+
+        Returns:
+            FileMetadata: Metadata of downloaded file
+
+        Note:
+            - Uses download sessions for files >150MB
+            - Shows progress with tqdm
+            - Handles chunked downloads automatically
+        """
         try:
             metadata = self.dbx.files_get_metadata(dropbox_path)
 
@@ -188,7 +305,33 @@ class FileOperations(BaseOperations):
             raise
 
     def download(self, dropbox_path: str, local_path: str) -> pd.DataFrame:
-        """Download a file or directory from Dropbox."""
+        """
+        Download a file or directory from Dropbox.
+
+        Args:
+            dropbox_path (str): Source path in Dropbox
+            local_path (str): Destination path on local system
+
+        Returns:
+            pd.DataFrame: DataFrame containing metadata of downloaded files
+
+        Raises:
+            Exception: If download fails
+
+        Example:
+            ```python
+            # Download single file
+            result = ops.download("/dropbox/path/file.txt", "local/path/file.txt")
+
+            # Download directory
+            result = ops.download("/dropbox/folder", "local/folder")
+            ```
+
+        Note:
+            - Creates local directories automatically
+            - Preserves directory structure
+            - Shows progress for each file
+        """
         try:
             metadata = self.dbx.files_get_metadata(dropbox_path)
             results = []
