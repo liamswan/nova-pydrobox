@@ -160,13 +160,18 @@ class TokenStorage:
                 return self._fernet_save_tokens(tokens)
 
             # Use keyring if available
+            failed_keys = []
             for key, value in tokens.items():
                 try:
                     encoded_value = self._encode_value(value)
                     keyring.set_password(self.service_name, key, encoded_value)
                 except Exception as e:
                     logger.error(f"Failed to save {key}: {e}")
-                    return self._fernet_save_tokens(tokens)
+                    failed_keys.append(key)
+
+            if failed_keys:
+                logger.info("Falling back to Fernet encryption for all tokens")
+                return self._fernet_save_tokens(tokens)
 
             logger.info("Tokens saved successfully using keyring")
             return True
