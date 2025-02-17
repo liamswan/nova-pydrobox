@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 import platform
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -32,8 +33,18 @@ class TokenStorage:
         force_fernet (bool, optional): Force use of Fernet encryption instead of keyring. Defaults to None.
     """
 
-    def __init__(self, service_name: str = "nova-pydrobox", force_fernet: bool = None):
+    TOKEN_EXPIRY_KEY = "token_expiry"
+    TOKEN_EXPIRY_BUFFER = 300  # 5 minutes buffer
+    DEFAULT_TOKEN_LIFETIME = 3600  # 1 hour default lifetime
+
+    def __init__(
+        self,
+        service_name: str = "nova-pydrobox",
+        force_fernet: bool = None,
+        token_lifetime: int = None,
+    ):
         self.service_name = service_name
+        self.token_lifetime = token_lifetime or self.DEFAULT_TOKEN_LIFETIME
         # Allow force_fernet to override platform check for testing
         if force_fernet is not None:
             self.use_keyring = not force_fernet
@@ -103,12 +114,12 @@ class TokenStorage:
             logger.error(f"Error handling encryption key: {e}")
             raise
 
-    def _encode_value(self, value: str) -> str:
+    def _encode_value(self, value: any) -> str:
         """
-        Encode a string value using base64.
+        Encode a value using base64.
 
         Args:
-            value (str): String to encode
+            value (any): Value to encode
 
         Returns:
             str: Base64 encoded string
@@ -117,10 +128,12 @@ class TokenStorage:
             Falls back to original value if encoding fails
         """
         try:
-            return base64.b64encode(value.encode()).decode()
+            # Convert value to string before encoding
+            str_value = str(value)
+            return base64.b64encode(str_value.encode()).decode()
         except Exception as e:
             logger.error(f"Error encoding value: {e}")
-            return value
+            return str(value)  # Return string version of value as fallback
 
     def _decode_value(self, value: str) -> str:
         """
@@ -141,12 +154,21 @@ class TokenStorage:
             logger.error(f"Error decoding value: {e}")
             return value
 
-    def save_tokens(self, tokens: dict) -> bool:
+    def _is_token_valid(self, tokens: dict) -> bool:
+        """Check if tokens are still valid."""
+        if not tokens or self.TOKEN_EXPIRY_KEY not in tokens:
+            return False
+        expiry = tokens[self.TOKEN_EXPIRY_KEY]
+        return time.time() < expiry - self.TOKEN_EXPIRY_BUFFER
+
+    def save_tokens(self, tokens: dict, force_fernet: bool = None) -> bool:
         """
         Save tokens using the configured storage backend.
 
         Args:
             tokens (dict): Dictionary containing token key-value pairs
+            force_fernet (bool, optional): Force use of Fernet encryption for this operation.
+                                         Defaults to None.
 
         Returns:
             bool: True if save successful, False otherwise
@@ -155,8 +177,12 @@ class TokenStorage:
             Falls back to Fernet encryption if keyring save fails
         """
         try:
-            # Use Fernet if forced or on Windows
-            if not self.use_keyring:
+            # Add expiry time if not present (using configured lifetime)
+            if self.TOKEN_EXPIRY_KEY not in tokens:
+                tokens[self.TOKEN_EXPIRY_KEY] = time.time() + self.token_lifetime
+
+            # Use Fernet if forced, on Windows, or explicitly requested
+            if force_fernet or not self.use_keyring:
                 return self._fernet_save_tokens(tokens)
 
             # Use keyring if available
@@ -193,22 +219,32 @@ class TokenStorage:
             - refresh_token
         """
         try:
+            tokens = None
             # Use Fernet if forced or on Windows
             if not self.use_keyring:
-                return self._fernet_get_tokens()
+                tokens = self._fernet_get_tokens()
+            else:
+                # Use keyring if available
+                tokens = {}
+                for key in ["app_key", "app_secret", "access_token", "refresh_token"]:
+                    encoded_value = keyring.get_password(self.service_name, key)
+                    if encoded_value:
+                        tokens[key] = self._decode_value(encoded_value)
 
-            # Use keyring if available
-            tokens = {}
-            for key in ["app_key", "app_secret", "access_token", "refresh_token"]:
-                encoded_value = keyring.get_password(self.service_name, key)
-                if encoded_value:
-                    tokens[key] = self._decode_value(encoded_value)
+            if not tokens:
+                return None
+
+            # Only check expiry if present
+            if self.TOKEN_EXPIRY_KEY in tokens and not self._is_token_valid(tokens):
+                logger.info("Stored tokens have expired")
+                return None
 
             if all(
                 key in tokens
                 for key in ["app_key", "app_secret", "access_token", "refresh_token"]
             ):
                 return tokens
+
             return None
         except Exception as e:
             logger.error(f"Error retrieving tokens: {e}")

@@ -1,8 +1,10 @@
 import logging
+import time
 import webbrowser
+from functools import wraps
+from typing import Optional
 
 import dropbox
-from typing import Optional
 
 from nova_pydrobox.auth.token_storage import TokenStorage
 
@@ -10,6 +12,39 @@ logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
+
+
+def rate_limit(max_attempts: int = 3, cooldown: int = 300):
+    """Rate limiting decorator for authentication attempts."""
+
+    def decorator(func):
+        attempts = {}
+
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            now = time.time()
+            # Clear old attempts
+            attempts.clear()
+
+            if attempts.get(func.__name__, 0) >= max_attempts:
+                last_attempt = attempts.get(f"{func.__name__}_last", 0)
+                if now - last_attempt < cooldown:
+                    wait_time = int(cooldown - (now - last_attempt))
+                    print(
+                        f"\nToo many authentication attempts. Please wait {wait_time} seconds."
+                    )
+                    return False
+                attempts[func.__name__] = 0
+
+            result = func(*args, **kwargs)
+            if not result:
+                attempts[func.__name__] = attempts.get(func.__name__, 0) + 1
+                attempts[f"{func.__name__}_last"] = now
+            return result
+
+        return wrapper
+
+    return decorator
 
 
 class Authenticator:
@@ -50,7 +85,12 @@ class Authenticator:
         print("2. If you're not logged in, please log in to your Dropbox account.")
         print("3. Click 'Create app' if you haven't created one yet.")
         input("\nPress Enter to open the Dropbox App Console...")
-        webbrowser.open("https://www.dropbox.com/developers/apps")
+        try:
+            webbrowser.open("https://www.dropbox.com/developers/apps")
+        except Exception as e:
+            logger.warning(f"Failed to open browser: {e}")
+            print("\nCouldn't open browser automatically.")
+            print("Please manually visit: https://www.dropbox.com/developers/apps")
 
         print("\nIn the Dropbox App Console:")
         print("1. Choose 'Scoped access' for API access type")
@@ -64,20 +104,31 @@ class Authenticator:
         app_key = input("Enter your App key: ").strip()
         app_secret = input("Enter your App secret: ").strip()
 
-        while not app_key or not app_secret:
+        if not app_key or not app_secret:
             print("\nBoth App key and App secret are required!")
             app_key = input("Enter your App key: ").strip()
             app_secret = input("Enter your App secret: ").strip()
 
+        if not app_key or not app_secret:
+            logger.error(
+                "App key and App secret are required but were not provided. Please ensure both fields are filled."
+            )
+            return None, None
+
         return app_key, app_secret
 
-    def authenticate_dropbox(self, force_reauth: bool = False) -> bool:
+    @rate_limit()
+    def authenticate_dropbox(
+        self, force_reauth: bool = False, force_fernet: bool = None
+    ) -> bool:
         """
         Perform OAuth2 authentication with Dropbox.
 
         Args:
             force_reauth (bool, optional): Force re-authentication even if tokens exist.
                                          Defaults to False.
+            force_fernet (bool, optional): Force use of Fernet encryption instead of keyring.
+                                         Defaults to None.
 
         Returns:
             bool: True if authentication successful, False otherwise
@@ -87,6 +138,9 @@ class Authenticator:
             - Stores tokens using TokenStorage
             - Includes retry logic for token storage
         """
+        # Initialize storage with force_fernet option
+        self.storage = TokenStorage(force_fernet=force_fernet)
+
         if not force_reauth:
             existing_tokens = self.storage.get_tokens()
             if existing_tokens:
@@ -98,8 +152,7 @@ class Authenticator:
             flow = dropbox.DropboxOAuth2FlowNoRedirect(
                 consumer_key=app_key,
                 consumer_secret=app_secret,
-                token_access_type="offline",
-                use_pkce=True,
+                token_access_type="offline",  # This ensures we get a refresh token
             )
 
             authorize_url = flow.start()
@@ -109,7 +162,7 @@ class Authenticator:
             print("4. Copy the authorization code.")
             webbrowser.open(authorize_url)
             auth_code = input("\nEnter the authorization code here: ").strip()
-
+            print("\nAuthenticating...")
             while True:
                 try:
                     oauth_result = flow.finish(auth_code)
@@ -127,7 +180,6 @@ class Authenticator:
                 "refresh_token": oauth_result.refresh_token,
             }
 
-            print("DEBUG: Tokens to be saved (sensitive data not displayed)")
             for attempt in range(2):  # Retry saving tokens up to 2 times
                 print(f"DEBUG: Attempt {attempt + 1} to save tokens")
                 if self.storage.save_tokens(tokens):
@@ -158,16 +210,25 @@ class Authenticator:
             logger.error("No credentials found")
             return None
         try:
-            dbx = dropbox.Dropbox(
-                oauth2_refresh_token=credentials["refresh_token"],
-                app_key=credentials["app_key"],
-                app_secret=credentials["app_secret"],
-            )
+            kwargs = {
+                "oauth2_refresh_token": credentials["refresh_token"],
+                "app_key": credentials["app_key"],
+                "app_secret": credentials["app_secret"],
+            }
+            if credentials.get("access_token"):
+                kwargs["oauth2_access_token"] = credentials["access_token"]
+
+            dbx = dropbox.Dropbox(**kwargs)
             try:
                 dbx.users_get_current_account()
-            except dropbox.exceptions.AuthError:
-                logger.error("Authentication error, unable to refresh token")
-                return None
+            except dropbox.exceptions.AuthError as e:
+                logger.warning(f"Auth error: {e}. Attempting to refresh token...")
+                # Token refresh is handled automatically by the SDK
+                try:
+                    dbx.users_get_current_account()
+                except dropbox.exceptions.AuthError:
+                    logger.error("Token refresh failed")
+                    return None
             logger.info("Successfully connected to Dropbox")
             return dbx
         except Exception as e:
@@ -176,12 +237,13 @@ class Authenticator:
 
 
 # Top-level aliases to support module-level imports
-def authenticate_dropbox(*args, **kwargs) -> bool:
+def authenticate_dropbox(*args, force_fernet: bool = None, **kwargs) -> bool:
     """
     Module-level function to authenticate with Dropbox.
 
     Args:
         *args: Variable length argument list
+        force_fernet (bool, optional): Force use of Fernet encryption instead of keyring
         **kwargs: Arbitrary keyword arguments
 
     Returns:
@@ -189,10 +251,16 @@ def authenticate_dropbox(*args, **kwargs) -> bool:
 
     Example:
         ```python
+        # Use keyring (default)
         success = authenticate_dropbox(force_reauth=True)
+
+        # Force Fernet encryption
+        success = authenticate_dropbox(force_reauth=True, force_fernet=True)
         ```
     """
-    return Authenticator().authenticate_dropbox(*args, **kwargs)
+    return Authenticator().authenticate_dropbox(
+        *args, force_fernet=force_fernet, **kwargs
+    )
 
 
 def get_dropbox_client(*args, **kwargs) -> Optional[dropbox.Dropbox]:
@@ -252,11 +320,15 @@ def main():
     if existing_tokens:
         print("\nExisting credentials found!")
         choice = input("Would you like to re-authenticate? (y/N): ").lower()
-        if choice != "y":
+        if choice == "y":
+            print("Re-authenticating...")
+            print("Please follow the prompts to re-authenticate your Dropbox account.")
+            auth.authenticate_dropbox(force_reauth=True)
+        else:
             print("Skipping re-authentication.")
             return
-
-    auth.authenticate_dropbox()
+    else:
+        auth.authenticate_dropbox()
 
 
 if __name__ == "__main__":
