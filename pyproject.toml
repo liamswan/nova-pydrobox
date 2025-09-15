@@ -44,7 +44,7 @@ ipdb = "^0.13.13"
 [tool.poetry.group.test.dependencies]
 pytest-asyncio = "^0.25.3"
 pytest = "^8.3.4"
-pytest-cov = "^6.0.0"
+pytest-cov = "^7.0.0"
 pytest-mock = "^3.14.0"
 requests-mock = "^1.12.1"
 
