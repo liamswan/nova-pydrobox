@@ -282,14 +282,14 @@ css = ["tinycss2 (>=1.1.0)"]
 
 [[package]]
 name = "certifi"
-version = "2026.6.17"
+version = "2026.7.22"
 description = "Python package for providing Mozilla's CA Bundle."
 optional = false
 python-versions = ">=3.7"
 groups = ["main", "test"]
 files = [
-    {file = "certifi-2026.6.17-py3-none-any.whl", hash = "sha256:2227dcbaafe0d2f59279d1762ddddc37783ed4354594f194ffc31d20f41fc3db"},
-    {file = "certifi-2026.6.17.tar.gz", hash = "sha256:024c88eeec92ca068db80f02b8b07c9cef7b9fe261d1d535abfd5abd6f6af432"},
+    {file = "certifi-2026.7.22-py3-none-any.whl", hash = "sha256:62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775"},
+    {file = "certifi-2026.7.22.tar.gz", hash = "sha256:741e2c3b351ddf169a738da9f2c048608ff7f2c5cc02f1ebc6b118bb090d5d55"},
 ]
 
 [[package]]
@@ -802,25 +802,25 @@ stone = ">=2,<=3.3.9"
 
 [[package]]
 name = "dropbox"
-version = "12.2.0"
+version = "12.2.1"
 description = "Official Dropbox API Client"
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 markers = "python_version >= \"3.11\""
 files = [
-    {file = "dropbox-12.2.0-py3-none-any.whl", hash = "sha256:716f1a25d5c0f14fb2686be92e1b18669a1213850b90124e21df38e2ba5a81f0"},
-    {file = "dropbox-12.2.0.tar.gz", hash = "sha256:150ea8698172e4b4db54cd2bde19dcea2b848b776c21fba6e511348911f08770"},
+    {file = "dropbox-12.2.1-py3-none-any.whl", hash = "sha256:a0f9cdc3505b104f7a14b35f81a8a0be6f44eb738475ef324243684c25efe1fb"},
+    {file = "dropbox-12.2.1.tar.gz", hash = "sha256:61fcb821f7e8585aa4b9e2abc94801aaf8d65ed5ca89313450e56d51c46add7e"},
 ]
 
 [package.dependencies]
 requests = ">=2.16.2"
-stone = ">=3.5.1,<4"
+stone = ">=3.5.3,<4"
 
 [package.extras]
 dev = ["build", "flake8", "twine", "wheel"]
 docs = ["sphinx", "sphinx_rtd_theme"]
-test = ["coverage", "mock", "pytest", "pytest-mock", "stone (>=3.5.1,<4)"]
+test = ["coverage", "mock", "pytest", "pytest-mock", "stone (>=3.5.3,<4)"]
 
 [[package]]
 name = "exceptiongroup"
@@ -858,14 +858,14 @@ tests = ["asttokens (>=2.1.0)", "coverage", "coverage-enable-subprocess", "ipyth
 
 [[package]]
 name = "fastjsonschema"
-version = "2.21.2"
+version = "2.22.0"
 description = "Fastest Python implementation of JSON schema"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "fastjsonschema-2.21.2-py3-none-any.whl", hash = "sha256:1c797122d0a86c5cace2e54bf4e819c36223b552017172f32c5c024a6b77e463"},
-    {file = "fastjsonschema-2.21.2.tar.gz", hash = "sha256:b1eb43748041c880796cd077f1a07c3d94e93ae84bba5ed36800a33554ae05de"},
+    {file = "fastjsonschema-2.22.0-py3-none-any.whl", hash = "sha256:60f4c92fda6f93efe3b3261638836478e1e11abc01c647e36e478199f7a86a37"},
+    {file = "fastjsonschema-2.22.0.tar.gz", hash = "sha256:6eb12e8f9900db6166c3d396d178ebdf6a4215fe22a06e19792edd612a20035a"},
 ]
 
 [package.extras]
@@ -1554,14 +1554,14 @@ test = ["jupyter-server (>=2.0.0)", "pytest (>=7.0)", "pytest-jupyter[server] (>
 
 [[package]]
 name = "jupyterlab"
-version = "4.6.1"
+version = "4.6.2"
 description = "JupyterLab computational environment"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "jupyterlab-4.6.1-py3-none-any.whl", hash = "sha256:85a58546c831f3dce6cf919468c26874c9065e99c42279fb4abb8e1b552a98bb"},
-    {file = "jupyterlab-4.6.1.tar.gz", hash = "sha256:75315982ed28427edaa62bb85eadb5105e4043a757643c910efd787fe6ed0837"},
+    {file = "jupyterlab-4.6.2-py3-none-any.whl", hash = "sha256:5964447036629adfcd3fc0969effc1da6f47d2cbd0a60b2c2eea7c31be0ec6a8"},
+    {file = "jupyterlab-4.6.2.tar.gz", hash = "sha256:e18ce8b34f3de350e93cd5b2c4f3ae884cbe266eb76bf5d6825a4ed34c13bcff"},
 ]
 
 [package.dependencies]
@@ -1579,6 +1579,7 @@ packaging = ">=23.2"
 tomli = {version = ">=1.2.2", markers = "python_version < \"3.11\""}
 tornado = ">=6.2.0"
 traitlets = "*"
+typing-extensions = {version = ">=4.4.0", markers = "python_version < \"3.12\""}
 
 [package.extras]
 dev = ["build", "bump2version", "coverage", "hatch", "pre-commit", "pytest-cov", "ruff (==0.15.15)", "shellcheck-py"]
@@ -1974,14 +1975,14 @@ files = [
 
 [[package]]
 name = "mistune"
-version = "3.3.3"
+version = "3.3.4"
 description = "A sane and fast Markdown parser with useful plugins and renderers"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "mistune-3.3.3-py3-none-any.whl", hash = "sha256:99de1585e42dcbd826faa9e11a202727a5e202e4e4722a4c69ac1ff615793dd7"},
-    {file = "mistune-3.3.3.tar.gz", hash = "sha256:c4c6c0c840b8637a2e9b8b6d607eb7c8f00888bf14c754409bcd339e848c2477"},
+    {file = "mistune-3.3.4-py3-none-any.whl", hash = "sha256:ee015381e955e370962968befe1d729ab60fafb6a715ac6751763fbce38c8d4a"},
+    {file = "mistune-3.3.4.tar.gz", hash = "sha256:58b5c96d6fcb61190dfe5fae498d2b2065f99cf61e9649418fd54cf1ada86dfe"},
 ]
 
 [package.dependencies]
@@ -2179,20 +2180,20 @@ files = [
 
 [[package]]
 name = "notebook"
-version = "7.6.0"
+version = "7.6.1"
 description = "Jupyter Notebook - A web-based notebook environment for interactive computing"
 optional = false
 python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "notebook-7.6.0-py3-none-any.whl", hash = "sha256:98aa2811b54ac191321d5dfce12ca700f8a511a33a26e4de2fa106a357c43d6a"},
-    {file = "notebook-7.6.0.tar.gz", hash = "sha256:ea13e79e601bf273074895fdfb17dd3f2da916d3c045e0b9c47d18b16ab62481"},
+    {file = "notebook-7.6.1-py3-none-any.whl", hash = "sha256:6ea1e4c926f0dc490444ddcc335797a3dacda470a805d01031872fb119988ba2"},
+    {file = "notebook-7.6.1.tar.gz", hash = "sha256:0b45fd1010668dd4808c40914d957706dbf044a677d28764dc881b74dfcede82"},
 ]
 
 [package.dependencies]
 jupyter-builder = ">=1.0.2,<2"
 jupyter-server = ">=2.19.0,<3"
-jupyterlab = ">=4.6.0,<4.7"
+jupyterlab = ">=4.6.2,<4.7"
 jupyterlab-server = ">=2.28.0,<3"
 notebook-shim = ">=0.2,<0.3"
 tornado = ">=6.2.0"
@@ -2612,14 +2613,14 @@ ptyprocess = ">=0.5"
 
 [[package]]
 name = "platformdirs"
-version = "4.10.1"
+version = "4.11.0"
 description = "A small Python package for determining appropriate platform-specific dirs, e.g. a `user data dir`."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "platformdirs-4.10.1-py3-none-any.whl", hash = "sha256:0e4eff26be2d75293977f7cddc153fd9b8eaa7fb0c7b64ffe4076cb443117443"},
-    {file = "platformdirs-4.10.1.tar.gz", hash = "sha256:ceab4084426fe6319ce18e86deada8ab1b7487c7aee7040c55e277c9ae793695"},
+    {file = "platformdirs-4.11.0-py3-none-any.whl", hash = "sha256:360ccded2b7fce0af0ff80cc8f5942a1c5d99b0e856033acb030bfc634709e74"},
+    {file = "platformdirs-4.11.0.tar.gz", hash = "sha256:0555d18370482847566ffabcaa53ad7c6c1c29f195989ae1ed634a05f76ea1e0"},
 ]
 
 [[package]]
@@ -2645,6 +2646,7 @@ description = "Python Lex & Yacc"
 optional = false
 python-versions = "*"
 groups = ["main"]
+markers = "python_version == \"3.10\""
 files = [
     {file = "ply-3.11-py2.py3-none-any.whl", hash = "sha256:096f9b8350b65ebd2fd1346b12452efe5b9607f7482813ffca50c22722a807ce"},
     {file = "ply-3.11.tar.gz", hash = "sha256:00c7c1aaa88358b9c765b6d3000c6eec0ba42abca5351b095321aef446081da3"},
@@ -2652,14 +2654,14 @@ files = [
 
 [[package]]
 name = "prometheus-client"
-version = "0.25.0"
+version = "0.26.0"
 description = "Python client for the Prometheus monitoring system."
 optional = false
 python-versions = ">=3.9"
 groups = ["main"]
 files = [
-    {file = "prometheus_client-0.25.0-py3-none-any.whl", hash = "sha256:d5aec89e349a6ec230805d0df882f3807f74fd6c1a2fa86864e3c2279059fed1"},
-    {file = "prometheus_client-0.25.0.tar.gz", hash = "sha256:5e373b75c31afb3c86f1a52fa1ad470c9aace18082d39ec0d2f918d11cc9ba28"},
+    {file = "prometheus_client-0.26.0-py3-none-any.whl", hash = "sha256:fa93d06737aa02bacd05794768508bb97d2fbee28cb3bca04eaae92f0ca953d6"},
+    {file = "prometheus_client-0.26.0.tar.gz", hash = "sha256:04a91bcf94e2cf74a44a1a874d651a2e853ed354b6e822f3b7487751465d5c2b"},
 ]
 
 [package.extras]
@@ -2980,14 +2982,14 @@ dev = ["black", "build", "mypy", "pytest", "pytest-cov", "setuptools", "tox", "t
 
 [[package]]
 name = "pytz"
-version = "2026.2"
+version = "2026.3.post1"
 description = "World timezone definitions, modern and historical"
 optional = false
 python-versions = "*"
 groups = ["main"]
 files = [
-    {file = "pytz-2026.2-py2.py3-none-any.whl", hash = "sha256:04156e608bee23d3792fd45c94ae47fae1036688e75032eea2e3bf0323d1f126"},
-    {file = "pytz-2026.2.tar.gz", hash = "sha256:0e60b47b29f21574376f218fe21abc009894a2321ea16c6754f3cad6eb7cdd6a"},
+    {file = "pytz-2026.3.post1-py2.py3-none-any.whl", hash = "sha256:dd95840dd199baea12d9cc096a1d452caa6596a1c1e4b5f3dbd1541855d5e815"},
+    {file = "pytz-2026.3.post1.tar.gz", hash = "sha256:2211d3fcf9a797d3405cac96ac7f61d80e6a644f72a3309607282fe8a2010c5d"},
 ]
 
 [[package]]
@@ -3638,14 +3640,14 @@ files = [
 
 [[package]]
 name = "soupsieve"
-version = "2.8.4"
+version = "2.9.1"
 description = "A modern CSS selector implementation for Beautiful Soup."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.10"
 groups = ["main"]
 files = [
-    {file = "soupsieve-2.8.4-py3-none-any.whl", hash = "sha256:e7e6b0769c8f51ed59acab6e994b00621096cfb1c640a7509295987388fbaf65"},
-    {file = "soupsieve-2.8.4.tar.gz", hash = "sha256:e121fd02e975c695e4e9e8774a5ee35d74714b59307868dcc5319ad2d9e3328e"},
+    {file = "soupsieve-2.9.1-py3-none-any.whl", hash = "sha256:4f4477399246b7a0c720a88ca2454b11cd6bb9ae4c9d170140786e916776c14c"},
+    {file = "soupsieve-2.9.1.tar.gz", hash = "sha256:c33e6605bbc71dd628b00c632d58ae607c22bade247e52553928f83bbb75b4ba"},
 ]
 
 [[package]]
@@ -3689,21 +3691,20 @@ six = ">=1.12.0"
 
 [[package]]
 name = "stone"
-version = "3.5.2"
+version = "3.5.3"
 description = "Stone is an interface description language (IDL) for APIs."
 optional = false
 python-versions = ">=3.11"
 groups = ["main"]
 markers = "python_version >= \"3.11\""
 files = [
-    {file = "stone-3.5.2-py3-none-any.whl", hash = "sha256:09de7b72eeca7e8a1036f46d9fa3fd9106d85d20d37099af45a0161a744669e5"},
-    {file = "stone-3.5.2.tar.gz", hash = "sha256:d1167cf3842fb8f700f6af3645c8b1878db7f91b954c7dfa54a8a2b84d3d4b5e"},
+    {file = "stone-3.5.3-py3-none-any.whl", hash = "sha256:5d78bd0b60692756b44758d876d74e4ed2ed938e29aa62646e3cbc247844027b"},
+    {file = "stone-3.5.3.tar.gz", hash = "sha256:d0d99f14d154452e71b3e2752efdbbb1769e4fecbc1291b1dfd1a046f7b6a1cb"},
 ]
 
 [package.dependencies]
 Jinja2 = ">=3.0.3"
 packaging = ">=21.0"
-ply = ">=3.4"
 
 [[package]]
 name = "terminado"
@@ -3826,14 +3827,14 @@ files = [
 
 [[package]]
 name = "tqdm"
-version = "4.69.0"
+version = "4.69.1"
 description = "Fast, Extensible Progress Meter"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "tqdm-4.69.0-py3-none-any.whl", hash = "sha256:9979978912be667a6ef21fd5d8abf54e324e63d82f7f43c360792ebc2bc4e622"},
-    {file = "tqdm-4.69.0.tar.gz", hash = "sha256:700c5e85dcd5f009dd6222588a29180a193a748247a5d855b4d67db93d79a53b"},
+    {file = "tqdm-4.69.1-py3-none-any.whl", hash = "sha256:0a654b96f7a2660cceb615b56f307ec2bef96c515409014a429a561981ab52b4"},
+    {file = "tqdm-4.69.1.tar.gz", hash = "sha256:2be21080a0ce17e902c2f1baeb6a74bf551b67bbdfa4bc0109fad471d0b4cb0d"},
 ]
 
 [package.dependencies]
@@ -3878,14 +3879,14 @@ urllib3 = ">=2"
 
 [[package]]
 name = "types-tqdm"
-version = "4.68.0.20260608"
+version = "4.69.0.20260724"
 description = "Typing stubs for tqdm"
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "types_tqdm-4.68.0.20260608-py3-none-any.whl", hash = "sha256:450a6e7e9e9b604928968927c414b32970e40091213c4180e1ed470905b13eff"},
-    {file = "types_tqdm-4.68.0.20260608.tar.gz", hash = "sha256:e1dfddf8770fbc30ecaf95ae57c286397831235064308f7dfc2b1d6684a76107"},
+    {file = "types_tqdm-4.69.0.20260724-py3-none-any.whl", hash = "sha256:635f82705a2d9cc824113f05d24c38ff91347c114b36ffebe537e6c5eff4673f"},
+    {file = "types_tqdm-4.69.0.20260724.tar.gz", hash = "sha256:6b34e41c24ecdaf479ab998dd2062e7288db098018450fd175eee599305c055e"},
 ]
 
 [package.dependencies]
