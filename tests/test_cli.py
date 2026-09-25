@@ -26,7 +26,9 @@ def test_cli_group():
     """Test CLI group base command."""
     runner = CliRunner()
     result = runner.invoke(cli)
-    assert result.exit_code == 0
+    # Click >= 8.2 exits with 2 when a group is invoked without a subcommand
+    assert result.exit_code in (0, 2)
+    assert "Usage:" in result.output
 
 
 @pytest.mark.parametrize("command", [authenticate, list_files])
